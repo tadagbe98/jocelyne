@@ -7,6 +7,7 @@ export type Project = {
   startDate: string;
   endDate: string;
   status: 'Pas commencé' | 'En cours' | 'Terminé' | 'En attente';
+  methodology: 'Agile' | 'Cascade' | 'Hybride';
   tasks: Task[];
   expenses: Expense[];
 };

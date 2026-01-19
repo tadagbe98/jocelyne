@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Check, CircleDollarSign, ListChecks, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Check, CircleDollarSign, ListChecks, Plus, Trash2, Workflow } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -185,6 +185,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                                        <div>
                                            <p className="font-semibold">Budget Total</p>
                                            <p className="text-sm text-muted-foreground">{project.budget.toLocaleString('fr-FR')} €</p>
+                                       </div>
+                                   </div>
+                                   <div className="flex items-start">
+                                       <Workflow className="w-5 h-5 mr-3 mt-1 text-primary"/>
+                                       <div>
+                                           <p className="font-semibold">Méthodologie</p>
+                                           <p className="text-sm text-muted-foreground">{project.methodology}</p>
                                        </div>
                                    </div>
                                </CardContent>

@@ -10,6 +10,7 @@ export const mockProjects: Project[] = [
     startDate: '2024-06-01',
     endDate: '2024-12-01',
     status: 'En cours',
+    methodology: 'Agile',
     tasks: [
       { id: 't1-1', name: 'Recruter des formateurs', completed: true, dueDate: '2024-06-15' },
       { id: 't1-2', name: 'Développer le contenu du cours', completed: true, dueDate: '2024-07-01' },
@@ -31,6 +32,7 @@ export const mockProjects: Project[] = [
     startDate: '2024-08-01',
     endDate: '2025-02-01',
     status: 'Pas commencé',
+    methodology: 'Hybride',
     tasks: [
         { id: 't2-1', name: 'Étude de faisabilité juridique', completed: false, dueDate: '2024-08-15' },
         { id: 't2-2', name: 'Rencontre avec les couturières intéressées', completed: false, dueDate: '2024-08-30' },
@@ -46,6 +48,7 @@ export const mockProjects: Project[] = [
     startDate: '2024-05-01',
     endDate: '2024-11-01',
     status: 'En cours',
+    methodology: 'Agile',
     tasks: [
         { id: 't3-1', name: 'Achat des vélos et équipements', completed: true, dueDate: '2024-05-15' },
         { id: 't3-2', name: 'Recrutement des livreurs', completed: true, dueDate: '2024-06-01' },
@@ -67,6 +70,7 @@ export const mockProjects: Project[] = [
     startDate: '2024-02-01',
     endDate: '2024-07-31',
     status: 'Terminé',
+    methodology: 'Cascade',
     tasks: [
         { id: 't4-1', name: 'Obtention des autorisations', completed: true, dueDate: '2024-02-28' },
         { id: 't4-2', name: 'Achat du broyeur et de la presse', completed: true, dueDate: '2024-03-15' },

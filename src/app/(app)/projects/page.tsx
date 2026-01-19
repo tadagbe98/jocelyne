@@ -47,6 +47,7 @@ export default function ProjectsPage() {
                             <TableRow>
                                 <TableHead>Nom du projet</TableHead>
                                 <TableHead className="hidden md:table-cell">Statut</TableHead>
+                                <TableHead className="hidden md:table-cell">Méthodologie</TableHead>
                                 <TableHead className="hidden lg:table-cell">Date de fin</TableHead>
                                 <TableHead>Progression</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -64,6 +65,9 @@ export default function ProjectsPage() {
                                         <Badge variant={getStatusVariant(project.status)}>
                                             {project.status}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">
+                                        <Badge variant="outline">{project.methodology}</Badge>
                                     </TableCell>
                                     <TableCell className="hidden lg:table-cell">
                                         {new Date(project.endDate).toLocaleDateString('fr-FR')}
