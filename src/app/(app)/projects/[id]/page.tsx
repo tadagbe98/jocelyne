@@ -22,8 +22,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
-function ProjectPlan({ project, projectRef }: { project: Project, projectRef: DocumentReference<Project> }) {
+function ProjectPlan({ project, projectRef, toast }: { project: Project, projectRef: DocumentReference<Project>, toast: ReturnType<typeof useToast>['toast'] }) {
     const { userProfile } = useUser();
     const firestore = useFirestore();
     
@@ -48,24 +49,50 @@ function ProjectPlan({ project, projectRef }: { project: Project, projectRef: Do
             dueDate: new Date().toISOString().split('T')[0],
             assigneeId: assigneeId === 'unassigned' ? undefined : assigneeId
         };
-
-        await updateDoc(projectRef, {
-            tasks: arrayUnion(newTaskObject)
-        });
-        setNewTask('');
-        setAssigneeId(undefined);
+        try {
+            await updateDoc(projectRef, {
+                tasks: arrayUnion(newTaskObject)
+            });
+            setNewTask('');
+            setAssigneeId(undefined);
+        } catch (error) {
+            console.error("Error adding task:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur',
+                description: "Impossible d'ajouter la tâche. Vérifiez vos permissions.",
+            });
+        }
     };
 
     const toggleTask = async (task: Task) => {
         const updatedTasks = project.tasks.map(t =>
             t.id === task.id ? { ...t, completed: !t.completed } : t
         );
-        await updateDoc(projectRef, { tasks: updatedTasks });
+        try {
+            await updateDoc(projectRef, { tasks: updatedTasks });
+        } catch (error) {
+            console.error("Error toggling task:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur',
+                description: "Impossible de modifier la tâche. Veuillez réessayer.",
+            });
+        }
     };
     
     const handleRemoveTask = async (taskId: string) => {
         const updatedTasks = project.tasks.filter(t => t.id !== taskId);
-        await updateDoc(projectRef, { tasks: updatedTasks });
+        try {
+            await updateDoc(projectRef, { tasks: updatedTasks });
+        } catch (error) {
+            console.error("Error removing task:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur',
+                description: "Impossible de supprimer la tâche. Veuillez réessayer.",
+            });
+        }
     };
 
     const getInitials = (name: string | null | undefined) => {
@@ -88,7 +115,7 @@ function ProjectPlan({ project, projectRef }: { project: Project, projectRef: Do
                         placeholder="Ajouter une nouvelle tâche..." 
                         className="flex-grow"
                     />
-                    <Select onValueChange={setAssigneeId} value={assigneeId}>
+                    <Select onValueChange={setAssigneeId} value={assigneeId || ''}>
                         <SelectTrigger className="w-full sm:w-[200px]">
                             <SelectValue placeholder="Assigner à..." />
                         </SelectTrigger>
@@ -238,6 +265,7 @@ function ProjectDetailsLoading() {
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     const projectRef = useMemo(() => {
         if (!userProfile?.companyId || !params.id) return null;
@@ -337,7 +365,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </TabsContent>
                 
                 <TabsContent value="plan">
-                    <ProjectPlan project={project} projectRef={projectRef!} />
+                    <ProjectPlan project={project} projectRef={projectRef!} toast={toast} />
                 </TabsContent>
 
                 <TabsContent value="budget">
