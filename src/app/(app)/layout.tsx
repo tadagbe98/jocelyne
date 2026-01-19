@@ -30,12 +30,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarContent>
         </Sidebar>
         <div className="flex flex-col flex-1">
-          <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
-            <SidebarTrigger className="md:hidden">
-              <Logo className="size-6" />
-            </SidebarTrigger>
-            <div className="flex items-center justify-between w-full">
-              <h1 className="ml-4 text-lg font-semibold font-headline">ImpactBiz</h1>
+          <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              <h1 className="text-lg font-semibold font-headline">ImpactBiz</h1>
+            </div>
+            <div className="flex items-center gap-2">
               <UserNav />
             </div>
           </header>
