@@ -1,5 +1,14 @@
 import { Timestamp } from "firebase/firestore";
 
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  companyId?: string;
+  roles?: string[];
+}
+
 export type Project = {
   id: string;
   name: string;
@@ -21,6 +30,7 @@ export type Task = {
   name: string;
   completed: boolean;
   dueDate: string;
+  assigneeId?: string;
 };
 
 export type Expense = {
@@ -36,4 +46,16 @@ export type Resource = {
   category: 'Guides' | 'Conseils' | 'Bonnes Pratiques';
   content: string;
   image: string;
+};
+
+export type Timesheet = {
+    id: string;
+    userId: string;
+    projectId: string;
+    taskId: string;
+    date: string;
+    hours: number;
+    notes?: string;
+    companyId: string;
+    createdAt: Timestamp;
 };

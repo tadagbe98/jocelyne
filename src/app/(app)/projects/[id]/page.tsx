@@ -11,16 +11,33 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import React, { useMemo, useState } from 'react';
-import { Expense, Project, Task } from '@/lib/types';
+import { Expense, Project, Task, UserProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
-import { collection, doc, DocumentReference, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, doc, DocumentReference, updateDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function ProjectPlan({ project, projectRef }: { project: Project, projectRef: DocumentReference<Project> }) {
+    const { userProfile } = useUser();
+    const firestore = useFirestore();
+    
+    const companyUsersQuery = useMemo(() => {
+        if (!userProfile?.companyId) return null;
+        return query(
+            collection(firestore, 'users') as collection<UserProfile>,
+            where('companyId', '==', userProfile.companyId)
+        );
+    }, [firestore, userProfile?.companyId]);
+    const { data: companyUsers, loading: usersLoading } = useCollection<UserProfile>(companyUsersQuery);
+
     const [newTask, setNewTask] = useState('');
+    const [assigneeId, setAssigneeId] = useState<string | undefined>();
 
     const handleAddTask = async () => {
         if (newTask.trim() === '') return;
@@ -28,13 +45,15 @@ function ProjectPlan({ project, projectRef }: { project: Project, projectRef: Do
             id: `t${Date.now()}`, // Simple unique ID
             name: newTask.trim(),
             completed: false,
-            dueDate: new Date().toISOString().split('T')[0]
+            dueDate: new Date().toISOString().split('T')[0],
+            assigneeId: assigneeId === 'unassigned' ? undefined : assigneeId
         };
 
         await updateDoc(projectRef, {
             tasks: arrayUnion(newTaskObject)
         });
         setNewTask('');
+        setAssigneeId(undefined);
     };
 
     const toggleTask = async (task: Task) => {
@@ -44,43 +63,77 @@ function ProjectPlan({ project, projectRef }: { project: Project, projectRef: Do
         await updateDoc(projectRef, { tasks: updatedTasks });
     };
     
-    const removeTask = async (task: Task) => {
-        await updateDoc(projectRef, {
-            tasks: arrayRemove(task)
-        });
-    };
-    
-    // Find the specific task to remove by its ID.
-    // The issue with arrayRemove is that it requires the exact object match.
-    // A better approach is to filter the array and update the whole array.
     const handleRemoveTask = async (taskId: string) => {
         const updatedTasks = project.tasks.filter(t => t.id !== taskId);
         await updateDoc(projectRef, { tasks: updatedTasks });
+    };
+
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) return '';
+        const initials = name.split(' ').map((n) => n[0]).join('');
+        return initials.toUpperCase();
     };
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Plan de projet (To-do list)</CardTitle>
-                <CardDescription>Organisez les activités de votre projet.</CardDescription>
+                <CardDescription>Organisez et assignez les activités de votre projet.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex gap-2 mb-4">
-                    <Input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Ajouter une nouvelle tâche..." />
-                    <Button onClick={handleAddTask}><Plus className="w-4 h-4 mr-2" /> Ajouter</Button>
+                <div className="flex flex-col gap-2 mb-4 sm:flex-row">
+                    <Input 
+                        value={newTask} 
+                        onChange={(e) => setNewTask(e.target.value)} 
+                        placeholder="Ajouter une nouvelle tâche..." 
+                        className="flex-grow"
+                    />
+                    <Select onValueChange={setAssigneeId} value={assigneeId}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="Assigner à..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="unassigned">Non assigné</SelectItem>
+                            {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
+                            (companyUsers || []).map(user => (
+                                <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddTask} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Ajouter</Button>
                 </div>
                 <div className="space-y-2">
-                    {project.tasks.map(task => (
-                        <div key={task.id} className="flex items-center p-2 rounded-md hover:bg-muted/50">
-                            <Checkbox id={`task-${task.id}`} checked={task.completed} onCheckedChange={() => toggleTask(task)} className="mr-4" />
-                            <label htmlFor={`task-${task.id}`} className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                                {task.name}
-                            </label>
-                            <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemoveTask(task.id)}>
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                        </div>
-                    ))}
+                    <TooltipProvider>
+                        {project.tasks.map(task => {
+                            const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
+                            return (
+                                <div key={task.id} className="flex items-center p-2 rounded-md hover:bg-muted/50">
+                                    <Checkbox id={`task-${task.id}`} checked={task.completed} onCheckedChange={() => toggleTask(task)} className="mr-4" />
+                                    <label htmlFor={`task-${task.id}`} className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                        {task.name}
+                                    </label>
+                                    
+                                    {assignedUser && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Avatar className="w-6 h-6 ml-auto mr-2">
+                                                    <AvatarImage src={assignedUser.photoURL || ''} alt={assignedUser.displayName || ''} />
+                                                    <AvatarFallback>{getInitials(assignedUser.displayName)}</AvatarFallback>
+                                                </Avatar>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Assigné à {assignedUser.displayName}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    )}
+
+                                    <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemoveTask(task.id)}>
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                </div>
+                            )
+                        })}
+                    </TooltipProvider>
                 </div>
             </CardContent>
         </Card>
@@ -89,8 +142,8 @@ function ProjectPlan({ project, projectRef }: { project: Project, projectRef: Do
 
 function ProjectBudget({ project }: { project: Project }) {
     const spent = project.expenses.reduce((sum, e) => sum + e.amount, 0);
-    const remaining = project.budget - spent;
-    const progress = (spent / project.budget) * 100;
+    const remaining = (project.budget || 0) - spent;
+    const progress = project.budget ? (spent / project.budget) * 100 : 0;
 
     return (
         <Card>
@@ -108,7 +161,7 @@ function ProjectBudget({ project }: { project: Project }) {
                         <Progress value={progress} />
                         <div className="flex justify-between text-sm text-muted-foreground">
                             <span>Restant: {remaining.toLocaleString('fr-FR')} €</span>
-                            <span>Total: {project.budget.toLocaleString('fr-FR')} €</span>
+                            <span>Total: {(project.budget || 0).toLocaleString('fr-FR')} €</span>
                         </div>
                     </div>
                     <Table>
@@ -267,7 +320,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                                        <CircleDollarSign className="w-5 h-5 mr-3 mt-1 text-primary"/>
                                        <div>
                                            <p className="font-semibold">Budget Total</p>
-                                           <p className="text-sm text-muted-foreground">{project.budget.toLocaleString('fr-FR')} €</p>
+                                           <p className="text-sm text-muted-foreground">{(project.budget || 0).toLocaleString('fr-FR')} €</p>
                                        </div>
                                    </div>
                                    <div className="flex items-start">

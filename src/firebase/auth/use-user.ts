@@ -1,20 +1,12 @@
 'use client';
 import { getAuth, onIdTokenChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, DocumentData } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { initializeFirebase } from '..';
+import { UserProfile } from '@/lib/types';
 
 const { app, firestore } = initializeFirebase();
 const auth = getAuth(app);
-
-export interface UserProfile extends DocumentData {
-    uid: string;
-    email: string | null;
-    displayName: string | null;
-    photoURL: string | null;
-    companyId?: string;
-    roles?: string[];
-}
 
 export const useUser = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -30,8 +22,19 @@ export const useUser = () => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
           } else {
-            setUserProfile(null);
+            // This case might happen if the user exists in Auth but not in Firestore
+            // For example, after sign-in with Google before company creation
+            const profile: UserProfile = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL
+            };
+            setUserProfile(profile);
           }
+          setLoading(false);
+        }, (error) => {
+          console.error("Error fetching user profile:", error);
           setLoading(false);
         });
         return () => unsubProfile();

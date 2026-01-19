@@ -173,6 +173,10 @@
         "dueDate": {
           "type": "string",
           "format": "date"
+        },
+        "assigneeId": {
+          "type": "string",
+          "description": "The UID of the user assigned to this task."
         }
       },
       "required": [
@@ -207,6 +211,55 @@
         "amount",
         "date"
       ]
+    },
+    "Timesheet": {
+      "title": "Timesheet",
+      "description": "Represents a single time entry for a user on a project task.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who logged the time."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "The ID of the project."
+        },
+        "taskId": {
+          "type": "string",
+          "description": "The ID of the task."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "The date the work was performed."
+        },
+        "hours": {
+          "type": "number",
+          "description": "The number of hours spent."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes about the work."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "The ID of the company."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "projectId",
+        "taskId",
+        "date",
+        "hours",
+        "companyId",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -233,6 +286,12 @@
         "$ref": "#/entities/Project"
       },
       "description": "Stores projects for a specific company."
+    },
+    "/companies/{companyId}/timesheets/{timesheetId}": {
+      "schema": {
+        "$ref": "#/entities/Timesheet"
+      },
+      "description": "Stores timesheet entries for a company."
     }
   }
 }
