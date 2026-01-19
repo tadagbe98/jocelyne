@@ -55,6 +55,9 @@ export default function SignupPage() {
                     case 'auth/weak-password':
                         errorMessage = "Le mot de passe doit contenir au moins 6 caractères.";
                         break;
+                    case 'auth/operation-not-allowed':
+                        errorMessage = "L'inscription par e-mail/mot de passe n'est pas activée. Veuillez l'activer dans la console Firebase (Authentication > Sign-in method).";
+                        break;
                     default:
                         errorMessage = "Erreur d'authentification: " + err.message;
                 }
