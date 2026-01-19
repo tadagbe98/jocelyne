@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { Skeleton } from './ui/skeleton';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading, claims } = useUser();
+  const { user, loading } = useUser();
 
   useEffect(() => {
     if (!loading && !user) {

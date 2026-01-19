@@ -1,7 +1,8 @@
+'use client';
+
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockProjects } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
@@ -9,9 +10,81 @@ import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/firebase/auth/use-user";
+import { useFirestore } from "@/firebase/provider";
+import React, { useMemo } from 'react';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { Project } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function ProjectsLoading() {
+     return (
+        <>
+            <PageHeader 
+                title="Mes Projets"
+                description="Suivez et gérez tous vos projets en un seul endroit."
+                actions={
+                    <Link href="/projects/new" className={buttonVariants()}>
+                        <PlusCircle className="mr-2" />
+                        Nouveau Projet
+                    </Link>
+                }
+            />
+            <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                           <TableRow>
+                                <TableHead>Nom du projet</TableHead>
+                                <TableHead className="hidden md:table-cell">Statut</TableHead>
+                                <TableHead className="hidden md:table-cell">Méthodologie</TableHead>
+                                <TableHead className="hidden lg:table-cell">Date de fin</TableHead>
+                                <TableHead>Progression</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {[...Array(5)].map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                    <TableCell className="text-right"><Skeleton className="h-8 w-8 inline-block" /></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </>
+    );
+}
 
 export default function ProjectsPage() {
+    const { userProfile, loading: userLoading } = useUser();
+    const firestore = useFirestore();
+
+    const projectsQuery = useMemo(() => {
+        if (!userProfile?.companyId) return null;
+        return query(
+          collection(firestore, 'companies', userProfile.companyId, 'projects') as collection<Project>, 
+          orderBy('createdAt', 'desc')
+        );
+    }, [firestore, userProfile?.companyId]);
+
+    const { data: projects, loading: projectsLoading, error } = useCollection<Project>(projectsQuery);
+
+    if (userLoading || projectsLoading) {
+        return <ProjectsLoading />;
+    }
     
+    if (error) {
+        return <p className="text-destructive">Erreur: {error.message}</p>
+    }
+
     const getStatusVariant = (status: string): "secondary" | "outline" | "default" | "destructive" => {
         switch (status) {
             case 'Terminé': return 'secondary';
@@ -22,7 +95,7 @@ export default function ProjectsPage() {
     }
 
     const calculateProgress = (tasks: { completed: boolean }[]) => {
-        if (tasks.length === 0) return 0;
+        if (!tasks || tasks.length === 0) return 0;
         const completedTasks = tasks.filter(t => t.completed).length;
         return (completedTasks / tasks.length) * 100;
     };
@@ -33,7 +106,7 @@ export default function ProjectsPage() {
                 title="Mes Projets"
                 description="Suivez et gérez tous vos projets en un seul endroit."
                 actions={
-                    <Link href="#" className={buttonVariants()}>
+                    <Link href="/projects/new" className={buttonVariants()}>
                         <PlusCircle className="mr-2" />
                         Nouveau Projet
                     </Link>
@@ -54,7 +127,7 @@ export default function ProjectsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockProjects.map(project => (
+                            {projects.map(project => (
                                 <TableRow key={project.id}>
                                     <TableCell className="font-medium">
                                         <Link href={`/projects/${project.id}`} className="hover:underline">

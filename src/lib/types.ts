@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export type Project = {
   id: string;
   name: string;
@@ -10,6 +12,8 @@ export type Project = {
   methodology: 'Agile' | 'Cascade' | 'Hybride';
   tasks: Task[];
   expenses: Expense[];
+  companyId: string;
+  createdAt: Timestamp;
 };
 
 export type Task = {

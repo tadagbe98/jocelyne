@@ -1,40 +1,61 @@
 'use client'
 
-import { notFound } from 'next/navigation';
-import { mockProjects } from '@/lib/mock-data';
+import { notFound, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Check, CircleDollarSign, ListChecks, Plus, Trash2, Workflow } from 'lucide-react';
+import { Calendar, CircleDollarSign, ListChecks, Plus, Trash2, Workflow } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import React, { useState } from 'react';
-import { Expense, Task } from '@/lib/types';
+import React, { useMemo, useState } from 'react';
+import { Expense, Project, Task } from '@/lib/types';
 import { Input } from '@/components/ui/input';
+import { useUser } from '@/firebase/auth/use-user';
+import { useFirestore } from '@/firebase/provider';
+import { collection, doc, DocumentReference, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const getProject = (id: string) => mockProjects.find(p => p.id === id);
-
-// Client component for the project plan (to-do list)
-function ProjectPlan({ initialTasks }: { initialTasks: Task[] }) {
-    const [tasks, setTasks] = useState(initialTasks);
+function ProjectPlan({ project, projectRef }: { project: Project, projectRef: DocumentReference<Project> }) {
     const [newTask, setNewTask] = useState('');
 
-    const handleAddTask = () => {
+    const handleAddTask = async () => {
         if (newTask.trim() === '') return;
-        const newId = `t${Date.now()}`;
-        setTasks([...tasks, { id: newId, name: newTask, completed: false, dueDate: new Date().toISOString().split('T')[0] }]);
+        const newTaskObject: Task = {
+            id: `t${Date.now()}`, // Simple unique ID
+            name: newTask.trim(),
+            completed: false,
+            dueDate: new Date().toISOString().split('T')[0]
+        };
+
+        await updateDoc(projectRef, {
+            tasks: arrayUnion(newTaskObject)
+        });
         setNewTask('');
     };
 
-    const toggleTask = (taskId: string) => {
-        setTasks(tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task));
+    const toggleTask = async (task: Task) => {
+        const updatedTasks = project.tasks.map(t =>
+            t.id === task.id ? { ...t, completed: !t.completed } : t
+        );
+        await updateDoc(projectRef, { tasks: updatedTasks });
     };
     
-    const removeTask = (taskId: string) => {
-        setTasks(tasks.filter(task => task.id !== taskId));
+    const removeTask = async (task: Task) => {
+        await updateDoc(projectRef, {
+            tasks: arrayRemove(task)
+        });
+    };
+    
+    // Find the specific task to remove by its ID.
+    // The issue with arrayRemove is that it requires the exact object match.
+    // A better approach is to filter the array and update the whole array.
+    const handleRemoveTask = async (taskId: string) => {
+        const updatedTasks = project.tasks.filter(t => t.id !== taskId);
+        await updateDoc(projectRef, { tasks: updatedTasks });
     };
 
     return (
@@ -49,13 +70,13 @@ function ProjectPlan({ initialTasks }: { initialTasks: Task[] }) {
                     <Button onClick={handleAddTask}><Plus className="w-4 h-4 mr-2" /> Ajouter</Button>
                 </div>
                 <div className="space-y-2">
-                    {tasks.map(task => (
+                    {project.tasks.map(task => (
                         <div key={task.id} className="flex items-center p-2 rounded-md hover:bg-muted/50">
-                            <Checkbox id={`task-${task.id}`} checked={task.completed} onCheckedChange={() => toggleTask(task.id)} className="mr-4" />
+                            <Checkbox id={`task-${task.id}`} checked={task.completed} onCheckedChange={() => toggleTask(task)} className="mr-4" />
                             <label htmlFor={`task-${task.id}`} className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
                                 {task.name}
                             </label>
-                            <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => removeTask(task.id)}>
+                            <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemoveTask(task.id)}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                         </div>
@@ -66,12 +87,10 @@ function ProjectPlan({ initialTasks }: { initialTasks: Task[] }) {
     );
 }
 
-// Client component for budget management
-function ProjectBudget({ initialBudget, initialExpenses }: { initialBudget: number, initialExpenses: Expense[] }) {
-    const [expenses, setExpenses] = useState(initialExpenses);
-    const spent = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const remaining = initialBudget - spent;
-    const progress = (spent / initialBudget) * 100;
+function ProjectBudget({ project }: { project: Project }) {
+    const spent = project.expenses.reduce((sum, e) => sum + e.amount, 0);
+    const remaining = project.budget - spent;
+    const progress = (spent / project.budget) * 100;
 
     return (
         <Card>
@@ -89,7 +108,7 @@ function ProjectBudget({ initialBudget, initialExpenses }: { initialBudget: numb
                         <Progress value={progress} />
                         <div className="flex justify-between text-sm text-muted-foreground">
                             <span>Restant: {remaining.toLocaleString('fr-FR')} €</span>
-                            <span>Total: {initialBudget.toLocaleString('fr-FR')} €</span>
+                            <span>Total: {project.budget.toLocaleString('fr-FR')} €</span>
                         </div>
                     </div>
                     <Table>
@@ -101,7 +120,7 @@ function ProjectBudget({ initialBudget, initialExpenses }: { initialBudget: numb
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {expenses.map(expense => (
+                            {project.expenses.map(expense => (
                                 <TableRow key={expense.id}>
                                     <TableCell>{expense.item}</TableCell>
                                     <TableCell>{new Date(expense.date).toLocaleDateString('fr-FR')}</TableCell>
@@ -116,9 +135,73 @@ function ProjectBudget({ initialBudget, initialExpenses }: { initialBudget: numb
     );
 }
 
+function ProjectDetailsLoading() {
+    return (
+        <>
+            <PageHeader
+                title={<Skeleton className="h-10 w-1/2" />}
+                description={<Skeleton className="h-4 w-3/4 mt-2" />}
+                actions={<Skeleton className="h-8 w-24" />}
+            />
+             <Tabs defaultValue="overview">
+                <TabsList className="mb-6">
+                    <TabsTrigger value="overview">Aperçu</TabsTrigger>
+                    <TabsTrigger value="plan">Plan de projet</TabsTrigger>
+                    <TabsTrigger value="budget">Budget</TabsTrigger>
+                </TabsList>
+                <TabsContent value="overview">
+                    <div className="grid gap-6 md:grid-cols-3">
+                        <div className="md:col-span-2 space-y-6">
+                            <Card>
+                                <CardHeader><CardTitle>Objectifs du projet</CardTitle></CardHeader>
+                                <CardContent><Skeleton className="h-20 w-full" /></CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>Progression</CardTitle></CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-4 w-1/2 mb-2" />
+                                    <Skeleton className="h-4 w-full" />
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-6">
+                           <Card>
+                               <CardHeader><CardTitle>Informations Clés</CardTitle></CardHeader>
+                               <CardContent className="space-y-6">
+                                   <Skeleton className="h-12 w-full" />
+                                   <Skeleton className="h-12 w-full" />
+                                   <Skeleton className="h-12 w-full" />
+                               </CardContent>
+                           </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
+        </>
+    );
+}
+
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-    const project = getProject(params.id);
+    const { userProfile, loading: userLoading } = useUser();
+    const firestore = useFirestore();
+
+    const projectRef = useMemo(() => {
+        if (!userProfile?.companyId || !params.id) return null;
+        return doc(
+            firestore, 
+            'companies', 
+            userProfile.companyId, 
+            'projects', 
+            params.id
+        ) as DocumentReference<Project>;
+    }, [firestore, userProfile?.companyId, params.id]);
+
+    const { data: project, loading: projectLoading } = useDoc<Project>(projectRef);
+    
+    if (userLoading || projectLoading) {
+        return <ProjectDetailsLoading />;
+    }
 
     if (!project) {
         notFound();
@@ -201,11 +284,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </TabsContent>
                 
                 <TabsContent value="plan">
-                    <ProjectPlan initialTasks={project.tasks} />
+                    <ProjectPlan project={project} projectRef={projectRef!} />
                 </TabsContent>
 
                 <TabsContent value="budget">
-                    <ProjectBudget initialBudget={project.budget} initialExpenses={project.expenses} />
+                    <ProjectBudget project={project} />
                 </TabsContent>
             </Tabs>
         </>

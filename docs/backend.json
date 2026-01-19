@@ -87,6 +87,126 @@
         "currency",
         "language"
       ]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Represents a project within a company.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "goals": {
+          "type": "string"
+        },
+        "budget": {
+          "type": "number"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Pas commencé",
+            "En cours",
+            "Terminé",
+            "En attente"
+          ]
+        },
+        "methodology": {
+          "type": "string",
+          "enum": [
+            "Agile",
+            "Cascade",
+            "Hybride"
+          ]
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/Task"
+          }
+        },
+        "expenses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/Expense"
+          }
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "name",
+        "companyId",
+        "createdAt"
+      ]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task within a project.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "completed": {
+          "type": "boolean"
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "completed",
+        "dueDate"
+      ]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "An expense related to a project.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "item": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "id",
+        "item",
+        "amount",
+        "date"
+      ]
     }
   },
   "auth": {
@@ -107,6 +227,12 @@
         "$ref": "#/entities/Company"
       },
       "description": "Stores information about a company."
+    },
+    "/companies/{companyId}/projects/{projectId}": {
+      "schema": {
+        "$ref": "#/entities/Project"
+      },
+      "description": "Stores projects for a specific company."
     }
   }
 }

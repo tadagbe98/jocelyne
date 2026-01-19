@@ -1,32 +1,49 @@
 'use client';
 import { getAuth, onIdTokenChanged, User } from 'firebase/auth';
+import { doc, onSnapshot, DocumentData } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { initializeFirebase } from '..';
 
-const { app } = initializeFirebase();
+const { app, firestore } = initializeFirebase();
 const auth = getAuth(app);
+
+export interface UserProfile extends DocumentData {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL: string | null;
+    companyId?: string;
+    roles?: string[];
+}
 
 export const useUser = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [claims, setClaims] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (user) => {
-      setLoading(true);
+    const unsubscribe = onIdTokenChanged(auth, (user) => {
       if (user) {
         setUser(user);
-        const tokenResult = await user.getIdTokenResult();
-        setClaims(tokenResult.claims);
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            setUserProfile(null);
+          }
+          setLoading(false);
+        });
+        return () => unsubProfile();
       } else {
         setUser(null);
-        setClaims(null);
+        setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  return { user, loading, claims };
+  return { user, userProfile, loading };
 };

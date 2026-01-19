@@ -3,15 +3,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isCompanyMember(companyId) {
+      return request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
       allow create: if request.auth.uid == userId;
     }
 
     match /companies/{companyId} {
-      allow read: if request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+      allow read: if isCompanyMember(companyId);
       allow update: if request.auth.uid == get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId;
       allow create: if request.auth.uid != null && request.resource.data.ownerId == request.auth.uid;
+
+      match /projects/{projectId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
     }
   }
 }
