@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { mockProjects } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
@@ -32,12 +32,10 @@ export default function ProjectsPage() {
                 title="Mes Projets"
                 description="Suivez et gérez tous vos projets en un seul endroit."
                 actions={
-                    <Button asChild>
-                        <Link href="#">
-                            <PlusCircle className="mr-2"/>
-                            Nouveau Projet
-                        </Link>
-                    </Button>
+                    <Link href="#" className={buttonVariants()}>
+                        <PlusCircle />
+                        Nouveau Projet
+                    </Link>
                 }
             />
 
