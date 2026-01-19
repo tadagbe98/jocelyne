@@ -28,10 +28,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <div className="flex flex-col flex-1">
         <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background/80 backdrop-blur-sm md:hidden">
-          <SidebarTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Logo className="size-6"/>
-            </Button>
+          <SidebarTrigger className="md:hidden">
+            <Logo className="size-6"/>
           </SidebarTrigger>
           <h1 className="ml-4 text-lg font-semibold font-headline">ImpactBiz</h1>
         </header>
