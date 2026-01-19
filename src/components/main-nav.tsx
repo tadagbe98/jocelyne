@@ -7,12 +7,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Briefcase, Activity, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Activity, BookOpen, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
   { href: '/projects', icon: Briefcase, label: 'Projets' },
+  { href: '/timesheet', icon: Clock, label: 'Feuille de temps' },
   { href: '/impact', icon: Activity, label: 'Analyse d\'Impact' },
   { href: '/resources', icon: BookOpen, label: 'Ressources' },
 ];

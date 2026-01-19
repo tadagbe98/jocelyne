@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { mockProjects } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function ProjectsPage() {
     
@@ -33,7 +34,7 @@ export default function ProjectsPage() {
                 description="Suivez et gérez tous vos projets en un seul endroit."
                 actions={
                     <Link href="#" className={buttonVariants()}>
-                        <PlusCircle />
+                        <PlusCircle className="mr-2" />
                         Nouveau Projet
                     </Link>
                 }
