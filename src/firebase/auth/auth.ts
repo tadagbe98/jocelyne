@@ -1,6 +1,5 @@
 'use client';
 import {
-  getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -10,22 +9,24 @@ import {
 import { initializeFirebase } from '..';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 
-const { app, auth: clientAuth, firestore } = initializeFirebase();
+const { auth, firestore } = initializeFirebase();
 const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async () => {
   try {
-    await signInWithPopup(clientAuth, googleProvider);
+    await signInWithPopup(auth, googleProvider);
   } catch (error) {
     console.error('Error signing in with Google', error);
+    throw error;
   }
 };
 
 export const signOut = async () => {
   try {
-    await firebaseSignOut(clientAuth);
+    await firebaseSignOut(auth);
   } catch (error) {
     console.error('Error signing out', error);
+    throw error;
   }
 };
 
@@ -39,8 +40,6 @@ type CompanyData = {
 };
 
 export const signUpWithCompany = async (email, password, fullName, companyData: CompanyData) => {
-  const { auth, firestore } = initializeFirebase();
-
   // 1. Create user
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
