@@ -15,7 +15,7 @@ import { Expense, Project, Task, UserProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
-import { collection, doc, DocumentReference, updateDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
+import { collection, doc, DocumentReference, updateDoc, query, where } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,8 +52,9 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
             assigneeId: assigneeId === 'unassigned' ? undefined : assigneeId
         };
         try {
+            const updatedTasks = [...project.tasks, newTaskObject];
             await updateDoc(projectRef, {
-                tasks: arrayUnion(newTaskObject)
+                tasks: updatedTasks
             });
             setNewTask('');
             setAssigneeId(undefined);
@@ -84,11 +85,10 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
     };
     
     const handleRemoveTask = async (taskId: string) => {
-        const taskToRemove = project.tasks.find(t => t.id === taskId);
-        if (!taskToRemove) return;
         try {
+            const updatedTasks = project.tasks.filter(t => t.id !== taskId);
             await updateDoc(projectRef, {
-                tasks: arrayRemove(taskToRemove)
+                tasks: updatedTasks
             });
         } catch (error) {
             console.error("Error removing task:", error);
