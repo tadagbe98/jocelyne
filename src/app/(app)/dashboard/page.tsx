@@ -25,6 +25,7 @@ function DashboardLoading() {
       <PageHeader
         title="Tableau de Bord"
         description="Bienvenue sur votre espace de gestion de projets à impact."
+        breadcrumbs={[{ label: "Tableau de Bord" }]}
       />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
@@ -130,6 +131,7 @@ export default function DashboardPage() {
       <PageHeader
         title="Tableau de Bord"
         description="Bienvenue sur votre espace de gestion de projets à impact."
+        breadcrumbs={[{ label: "Tableau de Bord" }]}
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

@@ -76,6 +76,7 @@ export default function NewProjectPage() {
             <PageHeader
                 title="Nouveau Projet"
                 description="Remplissez les détails ci-dessous pour créer un nouveau projet."
+                breadcrumbs={[{ label: "Projets", href: "/projects" }, { label: "Nouveau" }]}
             />
 
             <Card>

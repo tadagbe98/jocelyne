@@ -25,6 +25,7 @@ function ProjectsLoading() {
             <PageHeader 
                 title="Mes Projets"
                 description="Suivez et gérez tous vos projets en un seul endroit."
+                breadcrumbs={[{ label: "Projets" }]}
             />
             <Card>
                 <CardContent className="p-0">
@@ -153,6 +154,7 @@ export default function ProjectsPage() {
             <PageHeader 
                 title="Mes Projets"
                 description="Suivez et gérez tous vos projets en un seul endroit."
+                breadcrumbs={[{ label: "Projets" }]}
                 actions={
                     <div className="flex items-center gap-4">
                         {canCreateProject && (

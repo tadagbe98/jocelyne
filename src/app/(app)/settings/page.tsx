@@ -386,6 +386,7 @@ function SettingsPageLoading() {
             <PageHeader
                 title="Paramètres"
                 description="Gérez les informations de votre entreprise et les utilisateurs."
+                breadcrumbs={[{ label: "Paramètres" }]}
             />
             <div className="space-y-6">
                 <div className="flex items-center space-x-4">
@@ -437,6 +438,7 @@ export default function SettingsPage() {
       <PageHeader
         title="Paramètres"
         description="Gérez les informations de votre entreprise et les utilisateurs."
+        breadcrumbs={[{ label: "Paramètres" }]}
       />
       
       <Tabs defaultValue="company">

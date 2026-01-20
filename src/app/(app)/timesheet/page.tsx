@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -15,7 +13,7 @@ import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, dele
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, MoreHorizontal, X, Timer, Play, Pause, Plus, Link2, Unlink2, ChevronsUpDown, Check } from 'lucide-react';
+import { CalendarIcon, MoreHorizontal, X, Timer, Play, Pause, Plus, Link2, Unlink2, ChevronsUpDown, Check, List, LayoutGrid } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -375,11 +373,47 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
     );
 }
 
+function RecentEntriesCard({ entry, getProjectName, getDeliverableName, getTaskName, onDelete }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="font-semibold">{getProjectName(entry.projectId)}</p>
+            <p className="text-sm text-muted-foreground">{getDeliverableName(entry.deliverableId) || getTaskName(entry.projectId, entry.taskId)}</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="w-8 h-8 -mt-2 -mr-2">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onSelect={() => onDelete(entry)} className="text-destructive">
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="flex justify-between items-end mt-4">
+            <div>
+                <p className="text-sm text-muted-foreground">{format(new Date(entry.date), 'dd/MM/yy')}</p>
+                <Badge variant="outline">{entry.status}</Badge>
+            </div>
+            <p className="text-lg font-bold">{formatHours(entry.duration)}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 // Recent Entries
 function RecentEntriesList({ timesheets, projects, deliverables, loading, onDelete }) {
+    const [view, setView] = useState<'table' | 'card'>('table');
     
     const getProjectName = useCallback((projectId) => projects.find(p => p.id === projectId)?.name || 'N/A', [projects]);
-    const getDeliverableName = useCallback((deliverableId) => deliverables.find(d => d.id === deliverableId)?.name || 'N/A', [deliverables]);
+    const getDeliverableName = useCallback((deliverableId) => deliverables.find(d => d.id === deliverableId)?.name, [deliverables]);
     const getTaskName = useCallback((projectId, taskId) => {
         if (!taskId) return '-';
         const project = projects.find(p => p.id === projectId);
@@ -389,17 +423,31 @@ function RecentEntriesList({ timesheets, projects, deliverables, loading, onDele
 
     return (
         <Card>
-            <CardHeader><CardTitle>Mes entrées de temps</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Mes entrées de temps</CardTitle>
+                <div className="flex items-center gap-1 p-1 rounded-md border bg-muted">
+                    <Button variant={view === 'table' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setView('table')}>
+                        <List className="h-4 w-4" />
+                        <span className="sr-only">Vue Tableau</span>
+                    </Button>
+                    <Button variant={view === 'card' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setView('card')}>
+                        <LayoutGrid className="h-4 w-4" />
+                        <span className="sr-only">Vue Cartes</span>
+                    </Button>
+                </div>
+              </div>
+            </CardHeader>
             <CardContent>
                 {loading ? <Skeleton className="h-40 w-full" /> : 
                 timesheets.length > 0 ? (
+                  view === 'table' ? (
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Projet</TableHead>
-                                <TableHead>Tâche</TableHead>
-                                <TableHead>Livrable</TableHead>
+                                <TableHead>Tâche/Livrable</TableHead>
                                 <TableHead>Temps</TableHead>
                                 <TableHead>Statut</TableHead>
                                 <TableHead/>
@@ -410,8 +458,7 @@ function RecentEntriesList({ timesheets, projects, deliverables, loading, onDele
                                 <TableRow key={entry.id}>
                                     <TableCell>{format(new Date(entry.date), 'dd/MM/yy')}</TableCell>
                                     <TableCell>{getProjectName(entry.projectId)}</TableCell>
-                                    <TableCell>{getTaskName(entry.projectId, entry.taskId)}</TableCell>
-                                    <TableCell>{entry.deliverableId ? getDeliverableName(entry.deliverableId) : '-'}</TableCell>
+                                    <TableCell>{getDeliverableName(entry.deliverableId) || getTaskName(entry.projectId, entry.taskId)}</TableCell>
                                     <TableCell>{formatHours(entry.duration)}</TableCell>
                                     <TableCell><Badge variant="outline">{entry.status}</Badge></TableCell>
                                     <TableCell>
@@ -426,6 +473,20 @@ function RecentEntriesList({ timesheets, projects, deliverables, loading, onDele
                             ))}
                         </TableBody>
                     </Table>
+                  ) : (
+                    <div className="grid gap-4">
+                      {timesheets.map(entry => (
+                        <RecentEntriesCard 
+                          key={entry.id}
+                          entry={entry}
+                          getProjectName={getProjectName}
+                          getDeliverableName={getDeliverableName}
+                          getTaskName={getTaskName}
+                          onDelete={onDelete}
+                        />
+                      ))}
+                    </div>
+                  )
                 ) : (
                     <p className="text-muted-foreground text-center">Aucune entrée pour le moment.</p>
                 )}
@@ -484,25 +545,27 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
 
     
     useEffect(() => {
-        if (deliverableToEdit) {
-            reset({
-                ...deliverableToEdit,
-                sprintNumber: deliverableToEdit.sprintNumber || undefined,
-            });
-        } else {
-            reset({
-                name: '',
-                projectId: '',
-                status: 'À faire',
-                type: '',
-                sprintNumber: undefined,
-                projectPhase: '',
-                acceptanceCriteria: '',
-                validationStatus: 'En attente',
-                imageUrls: [],
-            });
+        if (isOpen) {
+            if (deliverableToEdit) {
+                reset({
+                    ...deliverableToEdit,
+                    sprintNumber: deliverableToEdit.sprintNumber || undefined,
+                });
+            } else {
+                reset({
+                    name: '',
+                    projectId: '',
+                    status: 'À faire',
+                    type: '',
+                    sprintNumber: undefined,
+                    projectPhase: '',
+                    acceptanceCriteria: '',
+                    validationStatus: 'En attente',
+                    imageUrls: [],
+                });
+            }
         }
-    }, [deliverableToEdit, reset]);
+    }, [isOpen, deliverableToEdit, reset]);
 
     const processSubmit = async (data: z.infer<typeof deliverableSchema>) => {
         const batch = writeBatch(firestore);
@@ -650,31 +713,28 @@ export default function TimesheetPage() {
     };
 
     const handleFormSubmit = async (data) => {
-        if (!userProfile) return;
-        const dataToSave: Omit<Timesheet, 'id'> & { createdAt: any } = {
+        if (!userProfile?.companyId) return;
+        
+        const dataToSave = {
             ...data,
-            billable: data.billable || false,
-            billingReference: data.billingReference || '',
             date: format(data.date, 'yyyy-MM-dd'),
             userId: userProfile.uid,
             companyId: userProfile.companyId,
-            status: 'En attente',
+            status: 'En attente' as const,
             createdAt: serverTimestamp(),
         };
 
-        // Remove undefined fields to avoid Firestore errors
-        Object.keys(dataToSave).forEach(key => {
-            if (dataToSave[key] === undefined) {
-                delete dataToSave[key];
-            }
-        });
+        // Clean up undefined optional fields to prevent Firestore errors
+        const cleanedData = Object.fromEntries(
+            Object.entries(dataToSave).filter(([_, v]) => v !== undefined)
+        );
 
         try {
-            await addDoc(collection(firestore, 'companies', userProfile.companyId, 'timesheets'), dataToSave);
+            await addDoc(collection(firestore, 'companies', userProfile.companyId, 'timesheets'), cleanedData);
             toast({ title: "Feuille de temps enregistrée !" });
         } catch (e) {
             console.error("Firestore error:", e);
-            toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'enregistrer l'entrée."})
+            toast({ variant: 'destructive', title: "Erreur", description: (e as Error).message || "Impossible d'enregistrer l'entrée."})
         }
     };
 
@@ -694,6 +754,7 @@ export default function TimesheetPage() {
         <PageHeader
             title="Feuille de temps"
             description="Suivez et enregistrez le temps passé sur vos projets."
+            breadcrumbs={[{ label: "Feuille de temps" }]}
         />
 
         <div className="grid gap-8 lg:grid-cols-2">
@@ -744,8 +805,3 @@ export default function TimesheetPage() {
     </>
   );
 }
-
-
-
-
-    

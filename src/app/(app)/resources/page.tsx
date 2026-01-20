@@ -21,6 +21,7 @@ export default function ResourcesPage() {
             <PageHeader 
                 title="Ressources Pratiques"
                 description="Guides, conseils et bonnes pratiques pour vous aider à réussir."
+                breadcrumbs={[{ label: "Ressources" }]}
             />
             
             <Accordion type="multiple" defaultValue={Object.keys(resourcesByCategory)} className="w-full space-y-6">

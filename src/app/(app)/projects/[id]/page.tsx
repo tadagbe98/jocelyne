@@ -119,6 +119,7 @@ function ProjectDetailsLoading() {
                 title={<Skeleton className="h-10 w-1/2" />}
                 description={<Skeleton className="h-4 w-3/4 mt-2" />}
                 actions={<Skeleton className="h-8 w-24" />}
+                breadcrumbs={[{ label: "Projets", href: "/projects" }, { label: "Chargement..." }]}
             />
              <Tabs defaultValue="overview">
                 <TabsList className="mb-6">
@@ -204,6 +205,7 @@ export default function ProjectDetailsPage() {
             <PageHeader
                 title={project.name}
                 description={project.description}
+                breadcrumbs={[{ label: "Projets", href: "/projects" }, { label: project.name }]}
                 actions={<Badge variant={getStatusVariant(project.status)} className="text-sm">{project.status}</Badge>}
             />
 

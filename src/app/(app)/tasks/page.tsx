@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown, Plus, Trash2, CornerDownRight } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2, CornerDownRight, List, LayoutGrid } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -21,11 +21,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 function TasksLoading() {
     return (
         <>
-            <PageHeader title="Gestion des Tâches" description="Ajoutez et assignez des tâches à vos projets." />
+            <PageHeader title="Gestion des Tâches" description="Ajoutez et assignez des tâches à vos projets." breadcrumbs={[{ label: "Tâches" }]}/>
             <Card>
                 <CardHeader>
                     <CardTitle><Skeleton className="h-6 w-1/4" /></CardTitle>
@@ -155,6 +156,7 @@ export default function TasksPage() {
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [view, setView] = useState<'table' | 'card'>('table');
 
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [newTaskName, setNewTaskName] = useState('');
@@ -187,9 +189,9 @@ export default function TasksPage() {
         return projects.find(p => p.id === selectedProjectId) ?? null;
     }, [projects, selectedProjectId]);
 
-    const hierarchicalTasks = useMemo(() => {
+    const {rootTasks, hierarchicalTasks} = useMemo(() => {
         const tasks = selectedProject?.tasks || [];
-        if (tasks.length === 0) return [];
+        if (tasks.length === 0) return { rootTasks: [], hierarchicalTasks: [] };
 
         const taskMap = new Map(tasks.map(t => [t.id, { ...t, children: [] as Task[] }]));
         const roots: Task[] = [];
@@ -201,19 +203,20 @@ export default function TasksPage() {
                 roots.push(task);
             }
         }
-
+        
         const flatList: { task: Task, level: number }[] = [];
         function flatten(tasks: Task[], level: number) {
             for (const task of tasks.sort((a,b) => a.name.localeCompare(b.name))) {
                 flatList.push({ task, level });
                 const children = taskMap.get(task.id)?.children || [];
                 if (children.length > 0) {
-                    flatten(children, level + 1);
+                    flatten(children.sort((a,b) => a.name.localeCompare(b.name)), level + 1);
                 }
             }
         }
-        flatten(roots, 0);
-        return flatList;
+        flatten(roots.sort((a,b) => a.name.localeCompare(b.name)), 0);
+
+        return { rootTasks: roots, hierarchicalTasks: flatList };
     }, [selectedProject?.tasks]);
 
     const getProjectRef = (projectId: string): DocumentReference<Project> | null => {
@@ -303,6 +306,19 @@ export default function TasksPage() {
             <PageHeader
                 title="Gestion des Tâches"
                 description="Ajoutez, assignez et suivez les tâches de tous vos projets."
+                breadcrumbs={[{ label: "Tâches" }]}
+                actions={
+                    <div className="flex items-center gap-1 p-1 rounded-md border bg-muted">
+                        <Button variant={view === 'table' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setView('table')}>
+                            <List className="h-4 w-4" />
+                            <span className="sr-only">Vue Tableau</span>
+                        </Button>
+                        <Button variant={view === 'card' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setView('card')}>
+                            <LayoutGrid className="h-4 w-4" />
+                            <span className="sr-only">Vue Cartes</span>
+                        </Button>
+                    </div>
+                }
             />
             <Card>
                 <CardHeader>
@@ -336,96 +352,122 @@ export default function TasksPage() {
                                 />
                                 <Button onClick={() => handleAddTask(newTaskName)}><Plus className="w-4 h-4 mr-2" />Ajouter une tâche</Button>
                             </div>
+                            
+                            {view === 'table' ? (
+                                <div className="border rounded-md">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-[50px]">Fait</TableHead>
+                                                <TableHead>Nom de la tâche</TableHead>
+                                                <TableHead className="w-auto sm:w-[200px]">Assigné à</TableHead>
+                                                <TableHead className="text-right w-[100px]">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {hierarchicalTasks.map(({ task, level }) => {
+                                                const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
+                                                const canManageTask = isManager;
+                                                const canAddSubtask = isManager || userProfile?.uid === task.assigneeId;
+                                                const isAddingSubtask = addingSubtaskTo === task.id;
 
-                            <div className="border rounded-md">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[50px]">Fait</TableHead>
-                                            <TableHead>Nom de la tâche</TableHead>
-                                            <TableHead className="w-auto sm:w-[200px]">Assigné à</TableHead>
-                                            <TableHead className="text-right w-[100px]">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {hierarchicalTasks.map(({ task, level }) => {
-                                            const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
-                                            const canManageTask = isManager;
-                                            const canAddSubtask = isManager || userProfile?.uid === task.assigneeId;
-                                            const isAddingSubtask = addingSubtaskTo === task.id;
-
-                                            return (
-                                                <React.Fragment key={task.id}>
-                                                    <TableRow className="group">
-                                                        <TableCell>
-                                                            <Checkbox
-                                                                checked={task.completed}
-                                                                onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
-                                                                disabled={!canManageTask && userProfile?.uid !== task.assigneeId}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell className="p-0">
-                                                            <div
-                                                                style={{ paddingLeft: `${level * 1.5 + 1}rem` }}
-                                                                className={cn('flex items-center gap-2 h-full px-4 font-medium', task.completed && 'line-through text-muted-foreground')}
-                                                            >
-                                                                {level > 0 && <CornerDownRight className="w-4 h-4 text-muted-foreground shrink-0" />}
-                                                                <span>{task.name}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <AssigneeCombobox
-                                                                companyUsers={companyUsers || []}
-                                                                assignedUser={assignedUser}
-                                                                usersLoading={usersLoading}
-                                                                onAssigneeChange={(newAssigneeId) => handleUpdateTask({ ...task, assigneeId: newAssigneeId })}
-                                                                disabled={!canManageTask}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell className="text-right">
-                                                            {canAddSubtask && (
-                                                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
-                                                                    <CornerDownRight className="w-4 h-4" />
-                                                                </Button>
-                                                            )}
-                                                            {canManageTask && (
-                                                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => handleRemoveTask(task.id)}>
-                                                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                                                </Button>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                    {isAddingSubtask && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={4} style={{ paddingLeft: `${(level + 1) * 1.5 + 1}rem`, paddingTop: 0, paddingBottom: '1rem' }}>
-                                                                <div className="flex gap-2 items-center">
-                                                                    <CornerDownRight className="w-4 h-4 text-muted-foreground ml-1" />
-                                                                    <Input 
-                                                                        value={newSubtaskName}
-                                                                        onChange={(e) => setNewSubtaskName(e.target.value)}
-                                                                        placeholder="Nom de la sous-tâche"
-                                                                        className="h-8"
-                                                                        autoFocus
-                                                                    />
-                                                                    <Button size="sm" onClick={() => handleAddTask(newSubtaskName, task.id)}>Ajouter</Button>
-                                                                    <Button size="sm" variant="ghost" onClick={() => setAddingSubtaskTo(null)}>Annuler</Button>
+                                                return (
+                                                    <React.Fragment key={task.id}>
+                                                        <TableRow className="group">
+                                                            <TableCell>
+                                                                <Checkbox
+                                                                    checked={task.completed}
+                                                                    onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
+                                                                    disabled={!canManageTask && userProfile?.uid !== task.assigneeId}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="p-0">
+                                                                <div
+                                                                    style={{ paddingLeft: `${level * 1.5 + 1}rem` }}
+                                                                    className={cn('flex items-center gap-2 h-full py-4 px-4 font-medium', task.completed && 'line-through text-muted-foreground')}
+                                                                >
+                                                                    {level > 0 && <CornerDownRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                                                                    <span>{task.name}</span>
                                                                 </div>
                                                             </TableCell>
+                                                            <TableCell>
+                                                                <AssigneeCombobox
+                                                                    companyUsers={companyUsers || []}
+                                                                    assignedUser={assignedUser}
+                                                                    usersLoading={usersLoading}
+                                                                    onAssigneeChange={(newAssigneeId) => handleUpdateTask({ ...task, assigneeId: newAssigneeId })}
+                                                                    disabled={!canManageTask}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                {canAddSubtask && (
+                                                                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
+                                                                        <CornerDownRight className="w-4 h-4" />
+                                                                    </Button>
+                                                                )}
+                                                                {canManageTask && (
+                                                                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => handleRemoveTask(task.id)}>
+                                                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                                                    </Button>
+                                                                )}
+                                                            </TableCell>
                                                         </TableRow>
-                                                    )}
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                        {hierarchicalTasks.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                                                    Aucune tâche pour ce projet. Commencez par en ajouter une !
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                        {isAddingSubtask && (
+                                                            <TableRow>
+                                                                <TableCell colSpan={4} style={{ paddingLeft: `${(level + 1) * 1.5 + 1}rem`, paddingTop: 0, paddingBottom: '1rem' }}>
+                                                                    <div className="flex gap-2 items-center">
+                                                                        <CornerDownRight className="w-4 h-4 text-muted-foreground ml-1" />
+                                                                        <Input 
+                                                                            value={newSubtaskName}
+                                                                            onChange={(e) => setNewSubtaskName(e.target.value)}
+                                                                            placeholder="Nom de la sous-tâche"
+                                                                            className="h-8"
+                                                                            autoFocus
+                                                                        />
+                                                                        <Button size="sm" onClick={() => handleAddTask(newSubtaskName, task.id)}>Ajouter</Button>
+                                                                        <Button size="sm" variant="ghost" onClick={() => setAddingSubtaskTo(null)}>Annuler</Button>
+                                                                    </div>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                            {hierarchicalTasks.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                                        Aucune tâche pour ce projet. Commencez par en ajouter une !
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {hierarchicalTasks.map(({ task, level }) => {
+                                        const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
+                                        return (
+                                            <div key={task.id} style={{ marginLeft: `${level * 1.5}rem` }} className={cn("flex items-center justify-between p-3 rounded-md border", task.completed && 'bg-muted/50')}>
+                                                <div className="flex items-center gap-3">
+                                                    <Checkbox
+                                                        checked={task.completed}
+                                                        onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
+                                                        disabled={!isManager && userProfile?.uid !== task.assigneeId}
+                                                    />
+                                                    <span className={cn("font-medium", task.completed && 'line-through text-muted-foreground')}>{task.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {assignedUser && <Badge variant="secondary" className="flex items-center gap-2"><Avatar className="w-4 h-4"><AvatarImage src={assignedUser.photoURL || ''} /><AvatarFallback className="text-[10px]">{assignedUser.displayName?.charAt(0)}</AvatarFallback></Avatar> {assignedUser.displayName}</Badge>}
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveTask(task.id)} disabled={!isManager}>
+                                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>
