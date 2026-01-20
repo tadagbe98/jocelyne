@@ -73,6 +73,8 @@ export type Timesheet = {
     notes?: string;
     companyId: string;
     createdAt: Timestamp;
+    deliverableDescription?: string;
+    deliverableImageUrls?: string[];
 
     workType?: 'Développement' | 'Test' | 'Réunion' | 'Documentation' | 'Support / Maintenance';
     status?: 'En cours' | 'Terminé' | 'Bloqué';
@@ -90,7 +92,6 @@ export type Timesheet = {
     // Cascade
     projectPhase?: 'Analyse des besoins' | 'Conception' | 'Développement' | 'Tests' | 'Déploiement' | 'Maintenance';
     wbsCode?: string;
-    deliverable?: string;
     validationStatus?: 'En attente' | 'Validé' | 'Rejeté';
 
     // V-Model

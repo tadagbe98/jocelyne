@@ -337,8 +337,17 @@
         "wbsCode": {
           "type": "string"
         },
-        "deliverable": {
-          "type": "string"
+        "deliverableDescription": {
+          "type": "string",
+          "description": "A description of the work delivered."
+        },
+        "deliverableImageUrls": {
+          "type": "array",
+          "description": "Image files of the deliverable, stored as data URLs.",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
         },
         "validationStatus": {
           "type": "string",

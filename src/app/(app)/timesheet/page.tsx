@@ -15,7 +15,7 @@ import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, dele
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, MoreHorizontal } from 'lucide-react';
+import { CalendarIcon, MoreHorizontal, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 
 
 const timesheetSchema = z.object({
@@ -44,6 +45,9 @@ const timesheetSchema = z.object({
   notes: z.string().optional(),
   status: z.string().min(1, "Le statut est requis."),
   
+  deliverableDescription: z.string().optional(),
+  deliverableImageUrls: z.array(z.string()).optional(),
+
   // Agile
   agileFramework: z.string().optional(),
   sprintNumber: z.coerce.number().optional(),
@@ -56,7 +60,6 @@ const timesheetSchema = z.object({
   // Cascade
   projectPhase: z.string().optional(),
   wbsCode: z.string().optional(),
-  deliverable: z.string().optional(),
   validationStatus: z.string().optional(),
 
   // V-Model
@@ -115,6 +118,9 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
         notes: '',
         status: 'En cours',
         
+        deliverableDescription: '',
+        deliverableImageUrls: [],
+
         // Agile
         agileFramework: '',
         sprintNumber: undefined,
@@ -127,7 +133,6 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
         // Cascade
         projectPhase: '',
         wbsCode: '',
-        deliverable: '',
         validationStatus: '',
 
         // V-Model
@@ -153,6 +158,8 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
   const selectedProject = useMemo(() => projects?.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const methodology = selectedProject?.methodology;
   const tasksForSelectedProject = useMemo(() => selectedProject?.tasks ?? [], [selectedProject]);
+  const imageUrls = watch('deliverableImageUrls');
+
 
   const startTime = watch('startTime');
   const endTime = watch('endTime');
@@ -192,6 +199,43 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
 
   const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+        const files = Array.from(e.target.files);
+        const currentUrls = getValues('deliverableImageUrls') || [];
+
+        const promises = files.map(file => {
+            return new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (typeof reader.result === 'string') {
+                        resolve(reader.result);
+                    } else {
+                        reject(new Error('Failed to read file as data URL'));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        });
+
+        Promise.all(promises).then(results => {
+            setValue('deliverableImageUrls', [...currentUrls, ...results]);
+        }).catch(error => {
+            console.error("Error reading files:", error);
+            toast({ variant: 'destructive', title: 'Erreur de Fichier', description: "Impossible de lire une ou plusieurs images."})
+        })
+    }
+    // Reset file input to allow re-uploading the same file
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const currentUrls = getValues('deliverableImageUrls') || [];
+    const newUrls = currentUrls.filter((_, i) => i !== index);
+    setValue('deliverableImageUrls', newUrls);
+  };
+
   const onSubmit = async (data: z.infer<typeof timesheetSchema>) => {
     if (!userProfile?.companyId) {
         toast({ variant: 'destructive', title: 'Erreur', description: 'Profil non trouvé' });
@@ -214,6 +258,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
             userId: currentValues.userId,
             date: currentValues.date,
             projectId: currentValues.projectId,
+            deliverableImageUrls: [],
         });
 
         onEntryAdded(data.userId);
@@ -389,6 +434,50 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                         )} />
                     </div>
 
+                    <div className="md:col-span-2 space-y-4 border-t pt-4">
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground">Livrables</h3>
+                        <FormField control={control} name="deliverableDescription" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Description du livrable</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Décrivez le livrable, ex: maquette de la page d'accueil, rapport d'analyse..." {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormItem>
+                            <FormLabel>Images du livrable</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    type="file" 
+                                    accept="image/png, image/jpeg, image/gif"
+                                    multiple
+                                    onChange={handleImageUpload}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        {imageUrls && imageUrls.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {imageUrls.map((src, index) => (
+                                    <div key={index} className="relative group aspect-square">
+                                        <Image src={src} alt={`Aperçu du livrable ${index + 1}`} fill sizes="150px" className="object-cover rounded-md" />
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                                            onClick={() => handleRemoveImage(index)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     {methodology === 'Agile' && (
                         <MethodologySection title="Détails - Agile">
                              <FormField control={control} name="agileFramework" render={({ field }) => (
@@ -444,7 +533,6 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                 </FormItem>
                             )} />
                             <FormField control={control} name="wbsCode" render={({ field }) => (<FormItem><FormLabel>Code de la tâche (WBS)</FormLabel><FormControl><Input placeholder="1.2.3" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
-                            <FormField control={control} name="deliverable" render={({ field }) => (<FormItem><FormLabel>Livrable associé</FormLabel><FormControl><Input placeholder="Document de specs v1.2" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
                             <FormField control={control} name="validationStatus" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Validation</FormLabel>
@@ -584,6 +672,16 @@ function RecentEntriesList({ projects, selectedUserId, isManager, userProfile })
                                     <TableCell>
                                         <div className="font-medium">{getProjectName(entry.projectId)}</div>
                                         <div className="text-sm text-muted-foreground">{getTaskName(entry.projectId, entry.taskId)}</div>
+                                         {entry.deliverableDescription && <p className="text-xs text-muted-foreground mt-1 italic">"{entry.deliverableDescription}"</p>}
+                                        {entry.deliverableImageUrls && entry.deliverableImageUrls.length > 0 && (
+                                            <div className="flex gap-2 mt-2">
+                                                {entry.deliverableImageUrls.map((url, index) => (
+                                                    <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                                                        <Image src={url} alt={`Livrable ${index + 1}`} width={40} height={40} className="rounded-md object-cover"/>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
                                     </TableCell>
                                     <TableCell><Badge variant="outline">{entry.status}</Badge></TableCell>
                                     <TableCell className="text-right">{entry.duration} h</TableCell>
@@ -693,4 +791,3 @@ export default function TimesheetPage() {
     </>
   );
 }
-
