@@ -748,6 +748,7 @@ function RecentEntriesList({ projects, selectedUserId, isManager, userProfile })
 
 export default function TimesheetPage() {
     const { user, userProfile, loading: userLoading } = useUser();
+    const firestore = useFirestore();
     const [viewedUserId, setViewedUserId] = useState<string | undefined>();
     
     const isManager = useMemo(() => 
