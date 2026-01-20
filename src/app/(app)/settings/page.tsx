@@ -136,9 +136,9 @@ function UserManagement() {
     
     const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
-    const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
+    const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm({
         resolver: zodResolver(inviteSchema),
-        defaultValues: { role: 'employee' }
+        defaultValues: { role: 'employee', displayName: '', email: '' }
     });
 
     const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
@@ -206,16 +206,22 @@ function UserManagement() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="role">Rôle</Label>
-                                        <Select onValueChange={(value) => reset({ ...register, role: value })} defaultValue="employee">
-                                            <SelectTrigger id="role">
-                                                <SelectValue placeholder="Sélectionner un rôle" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="employee">Employé</SelectItem>
-                                                <SelectItem value="scrum-master">Scrum Master</SelectItem>
-                                                <SelectItem value="admin">Admin</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Controller
+                                            name="role"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <SelectTrigger id="role">
+                                                        <SelectValue placeholder="Sélectionner un rôle" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="employee">Employé</SelectItem>
+                                                        <SelectItem value="scrum-master">Scrum Master</SelectItem>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
                                     </div>
                                 </div>
                                 <DialogFooter>
@@ -243,7 +249,7 @@ function UserManagement() {
                         {usersLoading ? (
                             <TableRow><TableCell colSpan={4}>Chargement...</TableCell></TableRow>
                         ) : (users ?? []).map(user => (
-                            <TableRow key={user.uid}>
+                            <TableRow key={user.uid || user.email}>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
                                         <Avatar>
