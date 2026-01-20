@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2, CornerDownRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -63,7 +63,7 @@ function TasksLoading() {
     )
 }
 
-function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersLoading }: { companyUsers: UserProfile[], assignedUser?: UserProfile, onAssigneeChange: (id?: string) => void, usersLoading: boolean }) {
+function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersLoading, disabled }: { companyUsers: UserProfile[], assignedUser?: UserProfile, onAssigneeChange: (id?: string) => void, usersLoading: boolean, disabled?: boolean }) {
     const [open, setOpen] = useState(false);
 
     const getInitials = (name: string | null | undefined) => {
@@ -80,7 +80,7 @@ function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersL
                     role="combobox"
                     aria-expanded={open}
                     className="w-full sm:w-[200px] justify-between h-9 font-normal"
-                    disabled={usersLoading}
+                    disabled={usersLoading || disabled}
                 >
                     {assignedUser ? (
                         <div className="flex items-center gap-2 overflow-hidden">
@@ -143,31 +143,25 @@ function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersL
     );
 }
 
-
 export default function TasksPage() {
     const { userProfile, loading: userLoading } = useUser();
-    const router = useRouter();
     const firestore = useFirestore();
     const { toast } = useToast();
 
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [newTaskName, setNewTaskName] = useState('');
+    const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
+    const [newSubtaskName, setNewSubtaskName] = useState("");
 
-    const isAuthorized = useMemo(() => 
+    const isManager = useMemo(() =>
         userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master'),
         [userProfile?.roles]
     );
 
-    useEffect(() => {
-        if (!userLoading && !isAuthorized) {
-            router.push('/dashboard');
-        }
-    }, [userLoading, isAuthorized, router]);
-
     const projectsQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
         return query(
-          collection(firestore, 'companies', userProfile.companyId, 'projects') as collection<Project>
+            collection(firestore, 'companies', userProfile.companyId, 'projects') as collection<Project>
         );
     }, [firestore, userProfile?.companyId]);
     const { data: projects, loading: projectsLoading } = useCollection<Project>(projectsQuery);
@@ -185,35 +179,69 @@ export default function TasksPage() {
         return projects.find(p => p.id === selectedProjectId) ?? null;
     }, [projects, selectedProjectId]);
 
+    const hierarchicalTasks = useMemo(() => {
+        const tasks = selectedProject?.tasks || [];
+        if (tasks.length === 0) return [];
+
+        const taskMap = new Map(tasks.map(t => [t.id, { ...t, children: [] as Task[] }]));
+        const roots: Task[] = [];
+
+        for (const task of tasks) {
+            if (task.parentId && taskMap.has(task.parentId)) {
+                taskMap.get(task.parentId)!.children.push(task);
+            } else {
+                roots.push(task);
+            }
+        }
+
+        const flatList: { task: Task, level: number }[] = [];
+        function flatten(tasks: Task[], level: number) {
+            for (const task of tasks.sort((a,b) => a.name.localeCompare(b.name))) {
+                flatList.push({ task, level });
+                const children = taskMap.get(task.id)?.children || [];
+                if (children.length > 0) {
+                    flatten(children, level + 1);
+                }
+            }
+        }
+        flatten(roots, 0);
+        return flatList;
+    }, [selectedProject?.tasks]);
+
     const getProjectRef = (projectId: string): DocumentReference<Project> | null => {
         if (!userProfile?.companyId) return null;
         return doc(firestore, 'companies', userProfile.companyId, 'projects', projectId) as DocumentReference<Project>;
     }
 
-    const handleAddTask = async () => {
-        if (!selectedProject || newTaskName.trim() === '') return;
-
+    const handleAddTask = async (name: string, parentId?: string) => {
+        if (!selectedProject || name.trim() === '') return;
         const projectRef = getProjectRef(selectedProject.id);
         if (!projectRef) return;
 
-        const newTaskObject: Task = {
+        const newTask: Task = {
             id: `t${Date.now()}`,
-            name: newTaskName.trim(),
+            name: name.trim(),
             completed: false,
-            dueDate: new Date().toISOString().split('T')[0], // Default due date
+            dueDate: new Date().toISOString().split('T')[0],
+            ...(parentId && { parentId }),
         };
-        
+
         try {
-            const updatedTasks = [...(selectedProject.tasks || []), newTaskObject];
+            const updatedTasks = [...(selectedProject.tasks || []), newTask];
             await updateDoc(projectRef, { tasks: updatedTasks });
-            toast({ title: "Tâche ajoutée", description: `La tâche "${newTaskName}" a été ajoutée au projet ${selectedProject.name}.`});
-            setNewTaskName('');
+            toast({ title: "Tâche ajoutée" });
+            if (parentId) {
+                setAddingSubtaskTo(null);
+                setNewSubtaskName('');
+            } else {
+                setNewTaskName('');
+            }
         } catch (error) {
             console.error("Error adding task:", error);
             toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'ajouter la tâche." });
         }
     };
-    
+
     const handleUpdateTask = async (updatedTask: Task) => {
         if (!selectedProject) return;
         const projectRef = getProjectRef(selectedProject.id);
@@ -227,14 +255,25 @@ export default function TasksPage() {
             toast({ variant: 'destructive', title: "Erreur", description: "Impossible de mettre à jour la tâche." });
         }
     };
-
+    
     const handleRemoveTask = async (taskId: string) => {
         if (!selectedProject) return;
         const projectRef = getProjectRef(selectedProject.id);
         if (!projectRef) return;
 
+        const tasksToRemove = new Set<string>([taskId]);
+        const findChildren = (parentId: string) => {
+            selectedProject.tasks.forEach(t => {
+                if (t.parentId === parentId) {
+                    tasksToRemove.add(t.id);
+                    findChildren(t.id);
+                }
+            });
+        };
+        findChildren(taskId);
+        
         try {
-            const updatedTasks = selectedProject.tasks.filter(t => t.id !== taskId);
+            const updatedTasks = selectedProject.tasks.filter(t => !tasksToRemove.has(t.id));
             await updateDoc(projectRef, { tasks: updatedTasks });
             toast({ title: "Tâche supprimée" });
         } catch (error) {
@@ -243,7 +282,7 @@ export default function TasksPage() {
         }
     };
 
-    if (userLoading || !isAuthorized) {
+    if (userLoading) {
         return <TasksLoading />;
     }
 
@@ -275,15 +314,18 @@ export default function TasksPage() {
                     {selectedProject && (
                         <div className="space-y-4">
                             <h3 className="text-xl font-semibold tracking-tight">Tâches pour : {selectedProject.name}</h3>
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                                <Input 
-                                    value={newTaskName}
-                                    onChange={(e) => setNewTaskName(e.target.value)}
-                                    placeholder="Nom de la nouvelle tâche..."
-                                    className="flex-grow"
-                                />
-                                <Button onClick={handleAddTask}><Plus className="w-4 h-4 mr-2"/>Ajouter une tâche</Button>
-                            </div>
+                            
+                            {isManager && (
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <Input
+                                        value={newTaskName}
+                                        onChange={(e) => setNewTaskName(e.target.value)}
+                                        placeholder="Nom de la nouvelle tâche principale..."
+                                        className="flex-grow"
+                                    />
+                                    <Button onClick={() => handleAddTask(newTaskName)}><Plus className="w-4 h-4 mr-2" />Ajouter une tâche</Button>
+                                </div>
+                            )}
 
                             <div className="border rounded-md">
                                 <Table>
@@ -292,40 +334,73 @@ export default function TasksPage() {
                                             <TableHead className="w-[50px]">Fait</TableHead>
                                             <TableHead>Nom de la tâche</TableHead>
                                             <TableHead className="w-auto sm:w-[200px]">Assigné à</TableHead>
-                                            <TableHead className="text-right w-[50px]">Actions</TableHead>
+                                            <TableHead className="text-right w-[100px]">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {(selectedProject.tasks || []).map(task => {
+                                        {hierarchicalTasks.map(({ task, level }) => {
                                             const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
+                                            const canManageTask = isManager;
+                                            const canAddSubtask = isManager || userProfile?.uid === task.assigneeId;
+                                            const isAddingSubtask = addingSubtaskTo === task.id;
+
                                             return (
-                                                <TableRow key={task.id}>
-                                                    <TableCell>
-                                                        <Checkbox
-                                                            checked={task.completed}
-                                                            onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                                                        {task.name}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                       <AssigneeCombobox
-                                                            companyUsers={companyUsers || []}
-                                                            assignedUser={assignedUser}
-                                                            usersLoading={usersLoading}
-                                                            onAssigneeChange={(newAssigneeId) => handleUpdateTask({ ...task, assigneeId: newAssigneeId })}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveTask(task.id)}>
-                                                            <Trash2 className="w-4 h-4 text-destructive" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
+                                                <React.Fragment key={task.id}>
+                                                    <TableRow>
+                                                        <TableCell style={{ paddingLeft: `${level * 1.5 + 1}rem` }}>
+                                                            <Checkbox
+                                                                checked={task.completed}
+                                                                onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
+                                                                disabled={!canManageTask && userProfile?.uid !== task.assigneeId}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                                            {task.name}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <AssigneeCombobox
+                                                                companyUsers={companyUsers || []}
+                                                                assignedUser={assignedUser}
+                                                                usersLoading={usersLoading}
+                                                                onAssigneeChange={(newAssigneeId) => handleUpdateTask({ ...task, assigneeId: newAssigneeId })}
+                                                                disabled={!canManageTask}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            {canAddSubtask && (
+                                                                <Button variant="ghost" size="icon" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
+                                                                    <CornerDownRight className="w-4 h-4" />
+                                                                </Button>
+                                                            )}
+                                                            {canManageTask && (
+                                                                <Button variant="ghost" size="icon" onClick={() => handleRemoveTask(task.id)}>
+                                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                                </Button>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {isAddingSubtask && (
+                                                        <TableRow>
+                                                            <TableCell colSpan={4} style={{ paddingLeft: `${(level + 1) * 1.5 + 1}rem`, paddingTop: 0, paddingBottom: '1rem' }}>
+                                                                <div className="flex gap-2 items-center">
+                                                                    <CornerDownRight className="w-4 h-4 text-muted-foreground ml-1" />
+                                                                    <Input 
+                                                                        value={newSubtaskName}
+                                                                        onChange={(e) => setNewSubtaskName(e.target.value)}
+                                                                        placeholder="Nom de la sous-tâche"
+                                                                        className="h-8"
+                                                                        autoFocus
+                                                                    />
+                                                                    <Button size="sm" onClick={() => handleAddTask(newSubtaskName, task.id)}>Ajouter</Button>
+                                                                    <Button size="sm" variant="ghost" onClick={() => setAddingSubtaskTo(null)}>Annuler</Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </React.Fragment>
                                             );
                                         })}
-                                        {selectedProject.tasks?.length === 0 && (
+                                        {hierarchicalTasks.length === 0 && (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                                     Aucune tâche pour ce projet. Commencez par en ajouter une !

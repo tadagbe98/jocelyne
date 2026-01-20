@@ -24,7 +24,7 @@ export type Company = {
 
 export type Project = {
   id: string;
-  name: string;
+  name:string;
   description: string;
   goals: string;
   budget: number;
@@ -44,6 +44,7 @@ export type Task = {
   completed: boolean;
   dueDate: string;
   assigneeId?: string;
+  parentId?: string;
 };
 
 export type Expense = {

@@ -241,11 +241,19 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
         toast({ variant: 'destructive', title: 'Erreur', description: 'Profil non trouvé' });
         return;
     }
+
+    const payload = { ...data };
+    // Firestore doesn't accept undefined values.
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
     
     try {
         const timesheetsRef = collection(firestore, 'companies', userProfile.companyId, 'timesheets');
         await addDoc(timesheetsRef, {
-            ...data,
+            ...payload,
             date: format(data.date, 'yyyy-MM-dd'),
             companyId: userProfile.companyId,
             createdAt: serverTimestamp(),
@@ -267,7 +275,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
         toast({
             variant: 'destructive',
             title: "Erreur",
-            description: "Impossible d'enregistrer l'entrée.",
+            description: (error as Error).message || "Impossible d'enregistrer l'entrée.",
         });
     }
   }
