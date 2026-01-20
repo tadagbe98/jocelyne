@@ -17,6 +17,7 @@ import { useFirestore } from '@/firebase/provider';
 import React, { useMemo } from 'react';
 import { Project } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 function DashboardLoading() {
   return (
@@ -81,6 +82,7 @@ function DashboardLoading() {
 export default function DashboardPage() {
   const { userProfile, loading: userLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const projectsQuery = useMemo(() => {
     if (!userProfile?.companyId) return null;
@@ -221,8 +223,8 @@ export default function DashboardPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/projects/${project.id}`}>Voir</Link>
+                                            <DropdownMenuItem onSelect={() => router.push(`/projects/${project.id}`)}>
+                                                Voir
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>

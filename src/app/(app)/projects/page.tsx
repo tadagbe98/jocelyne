@@ -17,6 +17,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { Project } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 function ProjectsLoading() {
      return (
@@ -60,6 +61,7 @@ function ProjectsLoading() {
 export default function ProjectsPage() {
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
+    const router = useRouter();
 
     const projectsQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
@@ -160,8 +162,8 @@ export default function ProjectsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
-                                                   <Link href={`/projects/${project.id}`}>Voir les détails</Link>
+                                                <DropdownMenuItem onSelect={() => router.push(`/projects/${project.id}`)}>
+                                                   Voir les détails
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem>Modifier</DropdownMenuItem>
                                                 <DropdownMenuItem className="text-destructive">Supprimer</DropdownMenuItem>
