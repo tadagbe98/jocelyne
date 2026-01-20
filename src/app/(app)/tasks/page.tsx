@@ -214,7 +214,7 @@ export default function TasksPage() {
     }
 
     const handleAddTask = async (name: string, parentId?: string) => {
-        if (!selectedProject || name.trim() === '') return;
+        if (!selectedProject || name.trim() === '' || !userProfile) return;
         const projectRef = getProjectRef(selectedProject.id);
         if (!projectRef) return;
 
@@ -225,6 +225,10 @@ export default function TasksPage() {
             dueDate: new Date().toISOString().split('T')[0],
             ...(parentId && { parentId }),
         };
+
+        if (!isManager) {
+            newTask.assigneeId = userProfile.uid;
+        }
 
         try {
             const updatedTasks = [...(selectedProject.tasks || []), newTask];
@@ -315,17 +319,15 @@ export default function TasksPage() {
                         <div className="space-y-4">
                             <h3 className="text-xl font-semibold tracking-tight">Tâches pour : {selectedProject.name}</h3>
                             
-                            {isManager && (
-                                <div className="flex flex-col gap-2 sm:flex-row">
-                                    <Input
-                                        value={newTaskName}
-                                        onChange={(e) => setNewTaskName(e.target.value)}
-                                        placeholder="Nom de la nouvelle tâche principale..."
-                                        className="flex-grow"
-                                    />
-                                    <Button onClick={() => handleAddTask(newTaskName)}><Plus className="w-4 h-4 mr-2" />Ajouter une tâche</Button>
-                                </div>
-                            )}
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <Input
+                                    value={newTaskName}
+                                    onChange={(e) => setNewTaskName(e.target.value)}
+                                    placeholder="Nom de la nouvelle tâche principale..."
+                                    className="flex-grow"
+                                />
+                                <Button onClick={() => handleAddTask(newTaskName)}><Plus className="w-4 h-4 mr-2" />Ajouter une tâche</Button>
+                            </div>
 
                             <div className="border rounded-md">
                                 <Table>
