@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -11,7 +12,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
 import { Project, Timesheet, UserProfile } from '@/lib/types';
 import { addDoc, collection, query, serverTimestamp, where, orderBy, limit } from 'firebase/firestore';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, ChevronsUpDown } from 'lucide-react';
@@ -605,16 +606,16 @@ export default function TimesheetPage() {
     const { data: projects, loading: projectsLoading } = useCollection<Project>(projectsQuery);
 
     // This function will be passed to the form to update the list when a new entry is added.
-    const handleEntryAdded = (userIdOfNewEntry: string) => {
+    const handleEntryAdded = useCallback((userIdOfNewEntry: string) => {
         setViewedUserId(userIdOfNewEntry);
-    };
+    }, []);
 
     // This function is for managers to switch between employees.
-    const handleUserChange = (newUserId: string) => {
+    const handleUserChange = useCallback((newUserId: string) => {
         if (isManager) {
             setViewedUserId(newUserId);
         }
-    };
+    }, [isManager]);
 
   return (
     <>
