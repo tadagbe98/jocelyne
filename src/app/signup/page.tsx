@@ -78,9 +78,9 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="grid min-h-screen place-items-center bg-background px-4 py-12">
+        <div className="grid w-full min-h-screen place-items-center bg-background px-4 py-12">
             <Card className="w-full max-w-2xl">
-                <CardHeader>
+                <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Créer un compte pour votre entreprise</CardTitle>
                     <CardDescription>
                         Remplissez les informations ci-dessous pour commencer à gérer vos projets.
