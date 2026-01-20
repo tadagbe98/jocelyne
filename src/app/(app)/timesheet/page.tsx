@@ -576,7 +576,7 @@ function RecentEntriesList({ projects, selectedUserId }) {
 }
 
 export default function TimesheetPage() {
-    const { user, userProfile } = useUser();
+    const { user, userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
 
     // This state will hold the ID of the user whose timesheet is being viewed.
@@ -586,15 +586,27 @@ export default function TimesheetPage() {
     const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
 
     useEffect(() => {
-        // When the user loads, set the initial viewed user.
-        if (user && !viewedUserId) {
-            setViewedUserId(user.uid);
+        // This effect synchronizes the viewedUserId based on the logged-in user's role and status.
+        if (userLoading || !user || !userProfile) {
+            return; // Don't do anything until user data is available.
         }
-        // If a non-manager is somehow viewing another user, reset to themselves.
-        if (user && !isManager && viewedUserId !== user.uid) {
-            setViewedUserId(user.uid);
+
+        // If the user is not a manager, force the view to their own timesheet.
+        if (!isManager) {
+            if (viewedUserId !== user.uid) {
+                setViewedUserId(user.uid);
+            }
+            return;
         }
-    }, [user, isManager, viewedUserId]);
+
+        // If the user is a manager but no employee has been selected to view yet,
+        // default the view to the manager's own timesheet.
+        if (isManager && !viewedUserId) {
+            setViewedUserId(user.uid);
+            return;
+        }
+
+    }, [user, userProfile, isManager, userLoading, viewedUserId]);
 
 
     const projectsQuery = useMemo(() => {
