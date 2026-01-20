@@ -10,6 +10,7 @@ import { FirebaseError } from 'firebase/app';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -123,7 +124,16 @@ export default function SignupPage() {
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="currency">Devise</Label>
-                                <Input id="currency" name="currency" placeholder="EUR" required />
+                                <Select name="currency" defaultValue="XOF" required>
+                                    <SelectTrigger id="currency">
+                                        <SelectValue placeholder="Sélectionner une devise" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="XOF">Franc CFA (XOF)</SelectItem>
+                                        <SelectItem value="EUR">Euro (€)</SelectItem>
+                                        <SelectItem value="USD">Dollar Américain ($)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="language">Langue</Label>

@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import React, { useMemo, useState } from 'react';
-import { Expense, Project, Task, UserProfile } from '@/lib/types';
+import { Company, Expense, Project, Task, UserProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
@@ -64,10 +64,11 @@ function ProjectPlan({ project }: { project: Project }) {
     );
 }
 
-function ProjectBudget({ project }: { project: Project }) {
+function ProjectBudget({ project, company }: { project: Project; company: Company | null }) {
     const spent = project.expenses.reduce((sum, e) => sum + e.amount, 0);
     const remaining = (project.budget || 0) - spent;
     const progress = project.budget ? (spent / project.budget) * 100 : 0;
+    const currency = company?.currency || 'EUR';
 
     return (
         <Card>
@@ -80,12 +81,12 @@ function ProjectBudget({ project }: { project: Project }) {
                     <div className="grid gap-2">
                         <div className="flex justify-between font-semibold">
                             <span>Dépensé</span>
-                            <span>{spent.toLocaleString('fr-FR')} €</span>
+                            <span>{spent.toLocaleString('fr-FR', { style: 'currency', currency })}</span>
                         </div>
                         <Progress value={progress} />
                         <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>Restant: {remaining.toLocaleString('fr-FR')} €</span>
-                            <span>Total: {(project.budget || 0).toLocaleString('fr-FR')} €</span>
+                            <span>Restant: {remaining.toLocaleString('fr-FR', { style: 'currency', currency })}</span>
+                            <span>Total: {(project.budget || 0).toLocaleString('fr-FR', { style: 'currency', currency })}</span>
                         </div>
                     </div>
                     <Table>
@@ -101,7 +102,7 @@ function ProjectBudget({ project }: { project: Project }) {
                                 <TableRow key={expense.id}>
                                     <TableCell>{expense.item}</TableCell>
                                     <TableCell>{new Date(expense.date).toLocaleDateString('fr-FR')}</TableCell>
-                                    <TableCell className="text-right">{expense.amount.toLocaleString('fr-FR')} €</TableCell>
+                                    <TableCell className="text-right">{expense.amount.toLocaleString('fr-FR', { style: 'currency', currency })}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -179,12 +180,18 @@ export default function ProjectDetailsPage() {
     }, [firestore, userProfile?.companyId, projectId]);
 
     const { data: project, loading: projectLoading } = useDoc<Project>(projectRef);
+
+    const companyRef = useMemo(() => {
+        if (!userProfile?.companyId) return null;
+        return doc(firestore, 'companies', userProfile.companyId) as DocumentReference<Company>;
+    }, [firestore, userProfile?.companyId]);
+    const { data: company, loading: companyLoading } = useDoc<Company>(companyRef);
     
-    if (userLoading || projectLoading) {
+    if (userLoading || projectLoading || companyLoading) {
         return <ProjectDetailsLoading />;
     }
 
-    if (!project) {
+    if (!project || !company) {
         notFound();
     }
 
@@ -249,7 +256,7 @@ export default function ProjectDetailsPage() {
                                        <CircleDollarSign className="w-5 h-5 mr-3 mt-1 text-primary"/>
                                        <div>
                                            <p className="font-semibold">Budget Total</p>
-                                           <p className="text-sm text-muted-foreground">{(project.budget || 0).toLocaleString('fr-FR')} €</p>
+                                           <p className="text-sm text-muted-foreground">{(project.budget || 0).toLocaleString('fr-FR', { style: 'currency', currency: company.currency })}</p>
                                        </div>
                                    </div>
                                    <div className="flex items-start">
@@ -270,7 +277,7 @@ export default function ProjectDetailsPage() {
                 </TabsContent>
 
                 <TabsContent value="budget">
-                    <ProjectBudget project={project} />
+                    <ProjectBudget project={project} company={company} />
                 </TabsContent>
             </Tabs>
         </>

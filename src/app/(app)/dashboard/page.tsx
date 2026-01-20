@@ -12,12 +12,13 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, doc, DocumentReference } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import React, { useMemo } from 'react';
-import { Project } from '@/lib/types';
+import { Company, Project } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 function DashboardLoading() {
   return (
@@ -95,9 +96,15 @@ export default function DashboardPage() {
   
   const { data: projects, loading: projectsLoading } = useCollection<Project>(projectsQuery);
 
-  const loading = userLoading || projectsLoading;
+  const companyRef = useMemo(() => {
+    if (!userProfile?.companyId) return null;
+    return doc(firestore, 'companies', userProfile.companyId) as DocumentReference<Company>;
+  }, [firestore, userProfile?.companyId]);
+  const { data: company, loading: companyLoading } = useDoc<Company>(companyRef);
 
-  if (loading || !projects) {
+  const loading = userLoading || projectsLoading || companyLoading;
+
+  if (loading || !projects || !company) {
     return <DashboardLoading />;
   }
 
@@ -161,8 +168,8 @@ export default function DashboardPage() {
             <CircleDollarSign className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{spentBudget.toLocaleString('fr-FR')} €</div>
-            <p className="text-xs text-muted-foreground">sur {totalBudget.toLocaleString('fr-FR')} € alloués</p>
+            <div className="text-2xl font-bold">{spentBudget.toLocaleString('fr-FR', { style: 'currency', currency: company.currency })}</div>
+            <p className="text-xs text-muted-foreground">sur {totalBudget.toLocaleString('fr-FR', { style: 'currency', currency: company.currency })} alloués</p>
           </CardContent>
         </Card>
          <Card>

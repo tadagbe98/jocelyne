@@ -10,9 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useUser } from "@/firebase/auth/use-user";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { Company } from "@/lib/types";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import { addDoc, collection, serverTimestamp, doc, DocumentReference } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useMemo } from "react";
 
 export default function NewProjectPage() {
     const { userProfile } = useUser();
@@ -20,6 +22,12 @@ export default function NewProjectPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+
+    const companyRef = useMemo(() => {
+        if (!userProfile?.companyId) return null;
+        return doc(firestore, 'companies', userProfile.companyId) as DocumentReference<Company>;
+    }, [firestore, userProfile?.companyId]);
+    const { data: company } = useDoc<Company>(companyRef);
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -94,7 +102,7 @@ export default function NewProjectPage() {
                                 <Input id="name" name="name" placeholder="Ex: Coopérative de couture" required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="budget">Budget total (€)</Label>
+                                <Label htmlFor="budget">Budget total ({company?.currency || '...'})</Label>
                                 <Input id="budget" name="budget" type="number" placeholder="5000" required />
                             </div>
                         </div>
