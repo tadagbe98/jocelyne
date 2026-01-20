@@ -373,7 +373,7 @@ export default function TasksPage() {
 
                                                 return (
                                                     <React.Fragment key={task.id}>
-                                                        <TableRow className="group">
+                                                        <TableRow>
                                                             <TableCell>
                                                                 <Checkbox
                                                                     checked={task.completed}
@@ -401,12 +401,12 @@ export default function TasksPage() {
                                                             </TableCell>
                                                             <TableCell className="text-right">
                                                                 {canAddSubtask && (
-                                                                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
+                                                                    <Button variant="ghost" size="icon" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
                                                                         <CornerDownRight className="w-4 h-4" />
                                                                     </Button>
                                                                 )}
                                                                 {canManageTask && (
-                                                                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => handleRemoveTask(task.id)}>
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveTask(task.id)}>
                                                                         <Trash2 className="w-4 h-4 text-destructive" />
                                                                     </Button>
                                                                 )}
@@ -444,28 +444,67 @@ export default function TasksPage() {
                                     </Table>
                                 </div>
                             ) : (
-                                <div className="grid gap-4">
-                                    {hierarchicalTasks.map(({ task, level }) => {
+                                <div className="space-y-2">
+                                    {hierarchicalTasks.length > 0 ? hierarchicalTasks.map(({ task, level }) => {
                                         const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
+                                        const canManageTask = isManager;
+                                        const canAddSubtask = isManager || userProfile?.uid === task.assigneeId;
+                                        const isAddingSubtask = addingSubtaskTo === task.id;
+
                                         return (
-                                            <div key={task.id} style={{ marginLeft: `${level * 1.5}rem` }} className={cn("flex items-center justify-between p-3 rounded-md border", task.completed && 'bg-muted/50')}>
-                                                <div className="flex items-center gap-3">
-                                                    <Checkbox
-                                                        checked={task.completed}
-                                                        onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
-                                                        disabled={!isManager && userProfile?.uid !== task.assigneeId}
-                                                    />
-                                                    <span className={cn("font-medium", task.completed && 'line-through text-muted-foreground')}>{task.name}</span>
+                                            <React.Fragment key={task.id}>
+                                                <div
+                                                    style={{ marginLeft: `${level * 1.5}rem` }}
+                                                    className={cn(
+                                                        "group flex items-center justify-between p-3 rounded-md border",
+                                                        task.completed ? 'bg-muted/50' : 'bg-card'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            checked={task.completed}
+                                                            onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
+                                                            disabled={!canManageTask && userProfile?.uid !== task.assigneeId}
+                                                        />
+                                                        <span className={cn("font-medium", task.completed && 'line-through text-muted-foreground')}>{task.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {assignedUser && <Badge variant="secondary" className="hidden sm:flex items-center gap-2"><Avatar className="w-4 h-4"><AvatarImage src={assignedUser.photoURL || ''} /><AvatarFallback className="text-[10px]">{assignedUser.displayName?.charAt(0)}</AvatarFallback></Avatar> {assignedUser.displayName}</Badge>}
+                                                        
+                                                        {canAddSubtask && (
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
+                                                                <CornerDownRight className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+
+                                                        {canManageTask && (
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveTask(task.id)}>
+                                                                <Trash2 className="w-4 h-4 text-destructive" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    {assignedUser && <Badge variant="secondary" className="flex items-center gap-2"><Avatar className="w-4 h-4"><AvatarImage src={assignedUser.photoURL || ''} /><AvatarFallback className="text-[10px]">{assignedUser.displayName?.charAt(0)}</AvatarFallback></Avatar> {assignedUser.displayName}</Badge>}
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveTask(task.id)} disabled={!isManager}>
-                                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
+                                                {isAddingSubtask && (
+                                                    <div style={{ marginLeft: `${(level + 1.5) * 1.5}rem` }} className="flex gap-2 items-center py-2">
+                                                        <CornerDownRight className="w-4 h-4 text-muted-foreground ml-1" />
+                                                        <Input 
+                                                            value={newSubtaskName}
+                                                            onChange={(e) => setNewSubtaskName(e.target.value)}
+                                                            placeholder="Nom de la sous-tâche"
+                                                            className="h-8"
+                                                            autoFocus
+                                                        />
+                                                        <Button size="sm" onClick={() => handleAddTask(newSubtaskName, task.id)}>Ajouter</Button>
+                                                        <Button size="sm" variant="ghost" onClick={() => setAddingSubtaskTo(null)}>Annuler</Button>
+                                                    </div>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    }) : (
+                                        <div className="h-24 flex items-center justify-center text-muted-foreground">
+                                            Aucune tâche pour ce projet. Commencez par en ajouter une !
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
