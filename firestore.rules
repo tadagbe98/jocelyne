@@ -6,16 +6,27 @@ service cloud.firestore {
     function isCompanyMember(companyId) {
       return request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
+    
+    function isCompanyAdmin(companyId) {
+      let userRoles = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles;
+      return isCompanyMember(companyId) && userRoles.hasAny(['admin']);
+    }
+    
+    function isCompanyScrumMasterOrAdmin(companyId) {
+       let userRoles = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles;
+       return isCompanyMember(companyId) && userRoles.hasAny(['scrum-master', 'admin']);
+    }
 
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isCompanyMember(get(/databases/$(database)/documents/users/$(userId)).data.companyId);
-      allow write: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || isCompanyScrumMasterOrAdmin(resource.data.companyId);
+      allow create: if request.auth.uid == userId || isCompanyScrumMasterOrAdmin(request.resource.data.companyId);
+      allow delete: if isCompanyAdmin(resource.data.companyId);
     }
 
     match /companies/{companyId} {
       allow read: if isCompanyMember(companyId);
-      allow update: if request.auth.uid == resource.data.ownerId;
+      allow update: if isCompanyAdmin(companyId);
       allow create: if request.auth.uid != null && request.resource.data.ownerId == request.auth.uid;
 
       match /projects/{projectId} {

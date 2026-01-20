@@ -6,7 +6,8 @@ export interface UserProfile {
   displayName: string | null;
   photoURL: string | null;
   companyId?: string;
-  roles?: string[];
+  roles?: ('admin' | 'employee' | 'scrum-master')[];
+  status?: 'active' | 'pending';
 }
 
 export type Project = {

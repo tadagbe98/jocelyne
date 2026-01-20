@@ -7,7 +7,8 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { initializeFirebase } from '..';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, addDoc } from 'firebase/firestore';
+import { UserProfile } from '@/lib/types';
 
 const { auth, firestore } = initializeFirebase();
 const googleProvider = new GoogleAuthProvider();
@@ -29,7 +30,6 @@ export const signOut = async () => {
     throw error;
   }
 };
-
 
 type CompanyData = {
     name: string;
@@ -71,9 +71,36 @@ export const signUpWithCompany = async (email, password, fullName, companyData: 
     photoURL: user.photoURL,
     companyId: companyRef.id,
     roles: ['admin'],
+    status: 'active',
   });
 
   await batch.commit();
 
   return userCredential;
 }
+
+export const inviteUserToCompany = async (
+  adminProfile: UserProfile, 
+  newUserData: { displayName: string; email: string; role: 'admin' | 'employee' | 'scrum-master' }
+) => {
+  if (!adminProfile.companyId || !adminProfile.roles?.some(r => ['admin', 'scrum-master'].includes(r))) {
+    throw new Error("Permission refusée : Seuls les administrateurs ou scrum masters peuvent inviter des utilisateurs.");
+  }
+
+  // This function only creates a user profile document in Firestore with a 'pending' status.
+  // It does NOT create a user in Firebase Authentication.
+  // The invited user must complete the standard sign-up process using the same email address.
+  // A robust, production-ready solution would typically involve sending a signed invitation link
+  // via email, processed by a backend service (like Firebase Functions) to securely create the user.
+
+  const usersRef = collection(firestore, 'users');
+  await addDoc(usersRef, {
+      displayName: newUserData.displayName,
+      email: newUserData.email.toLowerCase(),
+      roles: [newUserData.role],
+      companyId: adminProfile.companyId,
+      status: 'pending',
+      photoURL: null,
+      uid: '', // This will be updated when the user signs up and their account is linked.
+  });
+};

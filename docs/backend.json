@@ -34,9 +34,18 @@
             "type": "string",
             "enum": [
               "admin",
-              "employee"
+              "employee",
+              "scrum-master"
             ]
           }
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the user account.",
+          "enum": [
+            "active",
+            "pending"
+          ]
         }
       },
       "required": [
