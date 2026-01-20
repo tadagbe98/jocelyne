@@ -15,7 +15,7 @@ import { UserProfile } from "@/lib/types";
 import { collection, doc, query, updateDoc, where } from "firebase/firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useDoc } from "@/firebase/firestore/use-doc";
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,6 +26,8 @@ import { MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { createUserForCompany } from "@/firebase/auth/auth";
 import { FirebaseError } from "firebase/app";
+import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 const companySchema = z.object({
@@ -187,6 +189,9 @@ function UserManagement() {
         if (!userProfile) return;
 
         try {
+            if (!userProfile.roles?.includes('admin')) {
+                throw new Error("Permission refusée.");
+            }
             await createUserForCompany(userProfile, data);
             
             toast({
@@ -209,6 +214,8 @@ function UserManagement() {
                     default:
                         errorMessage = "Erreur: " + error.message;
                 }
+            } else if (error instanceof Error) {
+                errorMessage = error.message;
             }
             toast({ variant: 'destructive', title: "Erreur", description: errorMessage });
         }
@@ -339,9 +346,57 @@ function UserManagement() {
     );
 }
 
+function SettingsPageLoading() {
+    return (
+        <>
+            <PageHeader
+                title="Paramètres"
+                description="Gérez les informations de votre entreprise et les utilisateurs."
+            />
+            <div className="space-y-6">
+                <div className="flex items-center space-x-4">
+                    <Skeleton className="h-10 w-28" />
+                    <Skeleton className="h-10 w-24" />
+                </div>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-1/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                    <CardFooter>
+                        <Skeleton className="h-10 w-32" />
+                    </CardFooter>
+                </Card>
+            </div>
+        </>
+    );
+}
+
+
 export default function SettingsPage() {
-  const { userProfile } = useUser();
-  const isAdminOrScrumMaster = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
+  const { userProfile, loading: userLoading } = useUser();
+  const router = useRouter();
+  
+  const isAuthorized = userProfile?.roles?.includes('admin');
+  
+  useEffect(() => {
+    // If loading is finished and user is not an admin, redirect them.
+    if (!userLoading && !isAuthorized) {
+        router.push('/dashboard');
+    }
+  }, [userLoading, isAuthorized, router]);
+
+  // Show a loading screen while we check for authorization
+  if (userLoading || !isAuthorized) {
+      return <SettingsPageLoading />;
+  }
+
+  // At this point, user is loaded and is an admin.
+  const isAdmin = true;
 
   return (
     <>
@@ -353,12 +408,12 @@ export default function SettingsPage() {
       <Tabs defaultValue="company">
           <TabsList className="mb-6">
               <TabsTrigger value="company">Profil de l'entreprise</TabsTrigger>
-              {isAdminOrScrumMaster && <TabsTrigger value="users">Utilisateurs</TabsTrigger>}
+              {isAdmin && <TabsTrigger value="users">Utilisateurs</TabsTrigger>}
           </TabsList>
           <TabsContent value="company">
               <CompanyProfileForm />
           </TabsContent>
-          {isAdminOrScrumMaster && (
+          {isAdmin && (
             <TabsContent value="users">
                 <UserManagement />
             </TabsContent>

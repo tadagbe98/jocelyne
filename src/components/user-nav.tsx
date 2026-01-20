@@ -17,11 +17,13 @@ import { LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 
 export function UserNav() {
-    const { user } = useUser();
+    const { user, userProfile } = useUser();
 
     if (!user) {
         return null;
     }
+
+    const isAdmin = userProfile?.roles?.includes('admin');
 
     const getInitials = (name: string | null | undefined) => {
         if (!name) return <User className="w-5 h-5" />;
@@ -50,15 +52,17 @@ export function UserNav() {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                    <Link href="/settings">
-                        <DropdownMenuItem>
-                            <Settings className="w-4 h-4 mr-2" />
-                            Paramètres
-                        </DropdownMenuItem>
-                    </Link>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
+                {isAdmin && (
+                    <DropdownMenuGroup>
+                        <Link href="/settings">
+                            <DropdownMenuItem>
+                                <Settings className="w-4 h-4 mr-2" />
+                                Paramètres
+                            </DropdownMenuItem>
+                        </Link>
+                    </DropdownMenuGroup>
+                )}
+                {isAdmin && <DropdownMenuSeparator />}
                 <DropdownMenuItem onClick={signOut}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Se déconnecter

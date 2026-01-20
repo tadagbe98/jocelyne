@@ -97,8 +97,8 @@ export const createUserForCompany = async (
   adminProfile: UserProfile, 
   newUserData: { displayName: string; email: string; password: string, role: 'admin' | 'employee' | 'scrum-master' }
 ) => {
-  if (!adminProfile.companyId || !adminProfile.roles?.some(r => ['admin', 'scrum-master'].includes(r))) {
-    throw new Error("Permission refusée : Seuls les administrateurs ou scrum masters peuvent créer des utilisateurs.");
+  if (!adminProfile.companyId || !adminProfile.roles?.includes('admin')) {
+    throw new Error("Permission refusée : Seuls les administrateurs peuvent créer des utilisateurs.");
   }
 
   // Use a temporary, secondary Firebase app to create the user.

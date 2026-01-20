@@ -24,12 +24,6 @@ function ProjectsLoading() {
             <PageHeader 
                 title="Mes Projets"
                 description="Suivez et gérez tous vos projets en un seul endroit."
-                actions={
-                    <Link href="/projects/new" className={buttonVariants()}>
-                        <PlusCircle className="mr-2" />
-                        Nouveau Projet
-                    </Link>
-                }
             />
             <Card>
                 <CardContent className="p-0">
@@ -77,6 +71,11 @@ export default function ProjectsPage() {
 
     const { data: projects, loading: projectsLoading, error } = useCollection<Project>(projectsQuery);
 
+    const canCreateProject = useMemo(() => 
+        userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master'),
+        [userProfile?.roles]
+    );
+
     if (userLoading || projectsLoading) {
         return <ProjectsLoading />;
     }
@@ -106,10 +105,12 @@ export default function ProjectsPage() {
                 title="Mes Projets"
                 description="Suivez et gérez tous vos projets en un seul endroit."
                 actions={
-                    <Link href="/projects/new" className={buttonVariants()}>
-                        <PlusCircle className="mr-2" />
-                        Nouveau Projet
-                    </Link>
+                    canCreateProject && (
+                        <Link href="/projects/new" className={buttonVariants()}>
+                            <PlusCircle className="mr-2" />
+                            Nouveau Projet
+                        </Link>
+                    )
                 }
             />
 
