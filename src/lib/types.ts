@@ -19,7 +19,7 @@ export type Project = {
   startDate: string;
   endDate: string;
   status: 'Pas commencé' | 'En cours' | 'Terminé' | 'En attente';
-  methodology: 'Agile' | 'Cascade' | 'Hybride';
+  methodology: 'Agile' | 'Cascade' | 'Cycle en V' | 'Hybride';
   tasks: Task[];
   expenses: Expense[];
   companyId: string;
@@ -54,9 +54,47 @@ export type Timesheet = {
     userId: string;
     projectId: string;
     taskId: string;
-    date: string;
-    hours: number;
+    date: string; // yyyy-MM-dd
+    startTime?: string; // HH:mm
+    endTime?: string; // HH:mm
+    duration: number; // in hours
     notes?: string;
     companyId: string;
     createdAt: Timestamp;
+
+    workType?: 'Développement' | 'Test' | 'Réunion' | 'Documentation' | 'Support / Maintenance';
+    status?: 'En cours' | 'Terminé' | 'Bloqué';
+
+    // Agile
+    agileFramework?: 'Scrum' | 'Kanban' | 'XP';
+    sprintNumber?: number;
+    userStoryId?: string;
+    agileTaskType?: 'Feature' | 'Bug' | 'Refactoring' | 'Spike';
+    estimatedStoryPoints?: number;
+    isBlocked?: boolean;
+    blockerComment?: string;
+    agileToolLink?: string;
+
+    // Cascade
+    projectPhase?: 'Analyse des besoins' | 'Conception' | 'Développement' | 'Tests' | 'Déploiement' | 'Maintenance';
+    wbsCode?: string;
+    deliverable?: string;
+    validationStatus?: 'En attente' | 'Validé' | 'Rejeté';
+
+    // V-Model
+    developmentPhase?: 'Spécification' | 'Conception' | 'Implémentation';
+    associatedTestPhase?: 'Test unitaire' | 'Test d’intégration' | 'Test système' | 'Test d’acceptation';
+    testResult?: 'Conforme' | 'Non conforme';
+    documentReference?: string;
+
+    // Hybrid
+    iterationGoal?: string;
+    kpiTracked?: string;
+
+    // Advanced
+    isBillable?: boolean;
+    hourlyRate?: number;
+    calculatedCost?: number;
+    approvalStatus?: string;
+    managerComments?: string;
 };

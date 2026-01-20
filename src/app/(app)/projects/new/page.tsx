@@ -142,6 +142,7 @@ export default function NewProjectPage() {
                                     <SelectContent>
                                         <SelectItem value="Agile">Agile</SelectItem>
                                         <SelectItem value="Cascade">Cascade</SelectItem>
+                                        <SelectItem value="Cycle en V">Cycle en V</SelectItem>
                                         <SelectItem value="Hybride">Hybride</SelectItem>
                                     </SelectContent>
                                 </Select>

@@ -136,6 +136,7 @@
           "enum": [
             "Agile",
             "Cascade",
+            "Cycle en V",
             "Hybride"
           ]
         },
@@ -243,9 +244,17 @@
           "format": "date",
           "description": "The date the work was performed."
         },
-        "hours": {
+        "startTime": {
+          "type": "string",
+          "format": "time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "time"
+        },
+        "duration": {
           "type": "number",
-          "description": "The number of hours spent."
+          "description": "Duration in hours."
         },
         "notes": {
           "type": "string",
@@ -258,14 +267,136 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "workType": {
+          "type": "string",
+          "enum": [
+            "Développement",
+            "Test",
+            "Réunion",
+            "Documentation",
+            "Support / Maintenance"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "En cours",
+            "Terminé",
+            "Bloqué"
+          ]
+        },
+        "agileFramework": {
+          "type": "string",
+          "enum": [
+            "Scrum",
+            "Kanban",
+            "XP"
+          ]
+        },
+        "sprintNumber": {
+          "type": "number"
+        },
+        "userStoryId": {
+          "type": "string"
+        },
+        "agileTaskType": {
+          "type": "string",
+          "enum": [
+            "Feature",
+            "Bug",
+            "Refactoring",
+            "Spike"
+          ]
+        },
+        "estimatedStoryPoints": {
+          "type": "number"
+        },
+        "isBlocked": {
+          "type": "boolean"
+        },
+        "blockerComment": {
+          "type": "string"
+        },
+        "projectPhase": {
+          "type": "string",
+          "enum": [
+            "Analyse des besoins",
+            "Conception",
+            "Développement",
+            "Tests",
+            "Déploiement",
+            "Maintenance"
+          ]
+        },
+        "wbsCode": {
+          "type": "string"
+        },
+        "deliverable": {
+          "type": "string"
+        },
+        "validationStatus": {
+          "type": "string",
+          "enum": [
+            "En attente",
+            "Validé",
+            "Rejeté"
+          ]
+        },
+        "developmentPhase": {
+          "type": "string",
+          "enum": [
+            "Spécification",
+            "Conception",
+            "Implémentation"
+          ]
+        },
+        "associatedTestPhase": {
+          "type": "string",
+          "enum": [
+            "Test unitaire",
+            "Test d’intégration",
+            "Test système",
+            "Test d’acceptation"
+          ]
+        },
+        "testResult": {
+          "type": "string",
+          "enum": [
+            "Conforme",
+            "Non conforme"
+          ]
+        },
+        "documentReference": {
+          "type": "string"
+        },
+        "iterationGoal": {
+          "type": "string"
+        },
+        "kpiTracked": {
+          "type": "string"
+        },
+        "isBillable": {
+          "type": "boolean"
+        },
+        "hourlyRate": {
+          "type": "number"
+        },
+        "calculatedCost": {
+          "type": "number"
+        },
+        "approvalStatus": {
+          "type": "string"
+        },
+        "managerComments": {
+          "type": "string"
         }
       },
       "required": [
         "userId",
         "projectId",
-        "taskId",
         "date",
-        "hours",
+        "duration",
         "companyId",
         "createdAt"
       ]

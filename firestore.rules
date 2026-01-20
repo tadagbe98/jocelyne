@@ -34,8 +34,7 @@ service cloud.firestore {
       }
 
       match /timesheets/{timesheetId} {
-        allow read: if isCompanyMember(companyId);
-        allow create: if isCompanyMember(companyId) && request.resource.data.userId == request.auth.uid;
+        allow read, write: if isCompanyMember(companyId);
       }
     }
   }
