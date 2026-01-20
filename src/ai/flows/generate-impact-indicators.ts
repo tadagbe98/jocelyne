@@ -33,7 +33,6 @@ export async function generateImpactIndicators(
 
 const prompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
-  model: 'googleai/gemini-pro',
   input: {schema: GenerateImpactIndicatorsInputSchema},
   output: {schema: GenerateImpactIndicatorsOutputSchema},
   prompt: `You are an expert in socio-economic impact assessment.
