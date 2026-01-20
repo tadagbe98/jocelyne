@@ -579,35 +579,25 @@ export default function TimesheetPage() {
     const { user, userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
 
-    // This state will hold the ID of the user whose timesheet is being viewed.
-    // For managers, it can be changed. For employees, it's fixed to their own ID.
     const [viewedUserId, setViewedUserId] = useState<string | undefined>();
     
     const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
 
     useEffect(() => {
-        // This effect synchronizes the viewedUserId based on the logged-in user's role and status.
         if (userLoading || !user || !userProfile) {
-            return; // Don't do anything until user data is available.
+            return;
         }
-
-        // If the user is not a manager, force the view to their own timesheet.
+    
         if (!isManager) {
-            if (viewedUserId !== user.uid) {
-                setViewedUserId(user.uid);
-            }
-            return;
-        }
-
-        // If the user is a manager but no employee has been selected to view yet,
-        // default the view to the manager's own timesheet.
-        if (isManager && !viewedUserId) {
+            // Not a manager, so always show their own timesheet.
             setViewedUserId(user.uid);
-            return;
+        } else if (isManager && !viewedUserId) {
+            // Is a manager, but no one is selected yet. Default to themself.
+            setViewedUserId(user.uid);
         }
-
-    }, [user, userProfile, isManager, userLoading, viewedUserId]);
-
+        // If isManager and viewedUserId is already set, do nothing. Let the user's selection persist.
+    
+    }, [user, userProfile, isManager, userLoading]);
 
     const projectsQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
@@ -617,12 +607,10 @@ export default function TimesheetPage() {
     }, [firestore, userProfile?.companyId]);
     const { data: projects, loading: projectsLoading } = useCollection<Project>(projectsQuery);
 
-    // This function will be passed to the form to update the list when a new entry is added.
     const handleEntryAdded = useCallback((userIdOfNewEntry: string) => {
         setViewedUserId(userIdOfNewEntry);
     }, []);
 
-    // This function is for managers to switch between employees.
     const handleUserChange = useCallback((newUserId: string) => {
         if (isManager) {
             setViewedUserId(newUserId);
