@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -32,6 +33,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const timesheetSchema = z.object({
     date: z.date({ required_error: "La date est requise." }),
@@ -473,27 +475,43 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                              {selectedProject?.methodology === 'Cascade' && <FormField name="projectPhase" control={control} render={({ field }) => (
                                 <FormItem><FormLabel>Phase du projet</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Phase"/></SelectTrigger></FormControl><SelectContent>{['Analyse des besoins', 'Conception', 'Développement', 'Tests', 'Déploiement', 'Maintenance'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage/></FormItem>
                             )}/>}
-                             <div>
+                            <div className="space-y-2">
                                 <FormLabel>Images</FormLabel>
-                                <FormControl>
-                                    <Input type="file" multiple accept="image/*" onChange={handleImageSelect} className="mt-1" />
-                                </FormControl>
-                                <div className="mt-2 grid grid-cols-3 gap-2">
-                                    {(imageUrls || []).map((url, index) => (
-                                        <div key={index} className="relative group">
-                                            <Image src={url} alt={`Preview ${index}`} width={100} height={100} className="rounded-md object-cover w-full aspect-square" />
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={() => removeImage(index)}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                <div>
+                                    <FormControl>
+                                        <Input
+                                            id="image-upload"
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={handleImageSelect}
+                                            className="hidden"
+                                        />
+                                    </FormControl>
+                                    <Label htmlFor="image-upload" className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer")}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Ajouter des images
+                                    </Label>
+                                    {form.formState.errors.imageUrls && <p className="text-sm text-destructive mt-2">{form.formState.errors.imageUrls.message?.toString()}</p>}
                                 </div>
+                                {imageUrls && imageUrls.length > 0 && (
+                                    <div className="mt-2 grid grid-cols-3 gap-2">
+                                        {(imageUrls || []).map((url, index) => (
+                                            <div key={index} className="relative group">
+                                                <Image src={url} alt={`Preview ${index}`} width={100} height={100} className="rounded-md object-cover w-full aspect-square" />
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => removeImage(index)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <SheetFooter>
@@ -634,7 +652,7 @@ export default function TimesheetPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                Cette action est irréversible et supprimera définitivefiniment cette entrée de temps.
+                Cette action est irréversible et supprimera définifinement cette entrée de temps.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
