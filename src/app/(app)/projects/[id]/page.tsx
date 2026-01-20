@@ -1,6 +1,6 @@
 'use client'
 
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -265,7 +265,9 @@ function ProjectDetailsLoading() {
 }
 
 
-export default function ProjectDetailsPage({ params: { id: projectId } }: { params: { id: string } }) {
+export default function ProjectDetailsPage() {
+    const params = useParams();
+    const projectId = params.id as string;
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
