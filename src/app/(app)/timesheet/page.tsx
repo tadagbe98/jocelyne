@@ -92,15 +92,49 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
     resolver: zodResolver(timesheetSchema),
     defaultValues: {
         userId: viewedUserId || '',
+        projectId: '',
+        taskId: '',
         date: new Date(),
+        startTime: '',
+        endTime: '',
+        duration: 0,
+        workType: '',
         notes: '',
         status: 'En cours',
+        
+        // Agile
+        agileFramework: '',
+        sprintNumber: undefined,
+        userStoryId: '',
+        agileTaskType: '',
+        estimatedStoryPoints: undefined,
         isBlocked: false,
+        blockerComment: '',
+        
+        // Cascade
+        projectPhase: '',
+        wbsCode: '',
+        deliverable: '',
+        validationStatus: '',
+
+        // V-Model
+        developmentPhase: '',
+        associatedTestPhase: '',
+        testResult: '',
+        documentReference: '',
+
+        // Hybrid
+        iterationGoal: '',
+        kpiTracked: '',
+
+        // Advanced
         isBillable: false,
+        hourlyRate: undefined,
+        managerComments: '',
     },
   });
 
-  const { control, watch, setValue, reset } = form;
+  const { control, watch, setValue, reset, getValues } = form;
 
   const selectedProjectId = watch('projectId');
   const selectedProject = useMemo(() => projects?.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
@@ -163,15 +197,34 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
             createdAt: serverTimestamp(),
         });
         toast({ title: "Feuille de temps enregistrée !" });
+        
+        const currentValues = getValues();
         reset({
-            ...form.getValues(),
+            ...currentValues, // Keep userId, projectId, etc.
             taskId: '',
-            date: new Date(),
             startTime: '',
             endTime: '',
             duration: 0,
             notes: '',
+            // Reset methodology-specific fields
+            agileFramework: '',
+            sprintNumber: undefined,
+            userStoryId: '',
+            agileTaskType: '',
+            isBlocked: false,
+            blockerComment: '',
+            projectPhase: '',
+            wbsCode: '',
+            deliverable: '',
+            validationStatus: '',
+            developmentPhase: '',
+            associatedTestPhase: '',
+            testResult: '',
+            documentReference: '',
+            iterationGoal: '',
+            kpiTracked: '',
         });
+
         onEntryAdded(data.userId);
     } catch (error) {
         console.error("Error creating timesheet entry:", error);
@@ -194,7 +247,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                 <CardContent className="space-y-4">
                     <h3 className="text-lg font-semibold tracking-tight text-foreground">Informations générales</h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {isManager && (
+                        {isManager ? (
                              <FormField control={control} name="userId" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Employé</FormLabel>
@@ -208,6 +261,13 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
+                                </FormItem>
+                            )} />
+                        ) : (
+                            <FormField control={control} name="userId" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Employé</FormLabel>
+                                    <Input readOnly value={userProfile?.displayName || ''} />
                                 </FormItem>
                             )} />
                         )}
@@ -252,18 +312,20 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                 <FormItem>
                                     <FormLabel>Début</FormLabel>
                                     <FormControl><Input type="time" {...field} /></FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             )} />
                              <FormField control={control} name="endTime" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Fin</FormLabel>
                                     <FormControl><Input type="time" {...field} /></FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             )} />
                              <FormField control={control} name="duration" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Durée (h)</FormLabel>
-                                    <FormControl><Input type="number" readOnly {...field} /></FormControl>
+                                    <FormControl><Input type="number" readOnly {...field} value={field.value ?? 0} /></FormControl>
                                 </FormItem>
                             )} />
                         </div>
@@ -292,7 +354,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                         <FormField control={control} name="workType" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Type de travail</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger>
                                     </FormControl>
@@ -311,7 +373,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                         <FormField control={control} name="status" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Statut</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger><SelectValue placeholder="Sélectionner un statut" /></SelectTrigger>
                                     </FormControl>
@@ -342,7 +404,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                              <FormField control={control} name="agileFramework" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Framework Agile</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
                                         <SelectContent>
                                            <SelectItem value="Scrum">Scrum</SelectItem>
@@ -352,12 +414,12 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                     </Select>
                                 </FormItem>
                             )} />
-                            <FormField control={control} name="sprintNumber" render={({ field }) => (<FormItem><FormLabel>N° de Sprint</FormLabel><FormControl><Input type="number" placeholder="12" {...field} /></FormControl></FormItem>)} />
+                            <FormField control={control} name="sprintNumber" render={({ field }) => (<FormItem><FormLabel>N° de Sprint</FormLabel><FormControl><Input type="number" placeholder="12" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={control} name="userStoryId" render={({ field }) => (<FormItem><FormLabel>ID User Story</FormLabel><FormControl><Input placeholder="PROJ-123" {...field} /></FormControl></FormItem>)} />
                              <FormField control={control} name="agileTaskType" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Type de tâche Agile</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
                                         <SelectContent>
                                            <SelectItem value="Feature">Feature</SelectItem>
@@ -369,7 +431,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                 </FormItem>
                             )} />
                             <FormField control={control} name="isBlocked" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Blocage / Impediment</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                            {watch('isBlocked') && <FormField control={control} name="blockerComment" render={({ field }) => (<FormItem><FormLabel>Commentaire sur le blocage</FormLabel><FormControl><Textarea placeholder="Décrire le blocage..." {...field} /></FormControl></FormItem>)} />}
+                            {watch('isBlocked') && <FormField control={control} name="blockerComment" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaire sur le blocage</FormLabel><FormControl><Textarea placeholder="Décrire le blocage..." {...field} /></FormControl></FormItem>)} />}
                         </MethodologySection>
                     )}
                     
@@ -378,7 +440,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                              <FormField control={control} name="projectPhase" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Phase du projet</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
                                         <SelectContent>
                                            <SelectItem value="Analyse des besoins">Analyse des besoins</SelectItem>
@@ -396,7 +458,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                             <FormField control={control} name="validationStatus" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Validation</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
                                         <SelectContent>
                                            <SelectItem value="En attente">En attente</SelectItem>
@@ -412,13 +474,13 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                     {methodology === 'Cycle en V' && (
                         <MethodologySection title="Détails - Cycle en V">
                              <FormField control={control} name="developmentPhase" render={({ field }) => (
-                                <FormItem><FormLabel>Phase de développement</FormLabel><Select onValueChange={field.onChange}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Spécification">Spécification</SelectItem><SelectItem value="Conception">Conception</SelectItem><SelectItem value="Implémentation">Implémentation</SelectItem></SelectContent></Select></FormItem>
+                                <FormItem><FormLabel>Phase de développement</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Spécification">Spécification</SelectItem><SelectItem value="Conception">Conception</SelectItem><SelectItem value="Implémentation">Implémentation</SelectItem></SelectContent></Select></FormItem>
                             )} />
                              <FormField control={control} name="associatedTestPhase" render={({ field }) => (
-                                <FormItem><FormLabel>Phase de test associée</FormLabel><Select onValueChange={field.onChange}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Test unitaire">Test unitaire</SelectItem><SelectItem value="Test d’intégration">Test d’intégration</SelectItem><SelectItem value="Test système">Test système</SelectItem><SelectItem value="Test d’acceptation">Test d’acceptation</SelectItem></SelectContent></Select></FormItem>
+                                <FormItem><FormLabel>Phase de test associée</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Test unitaire">Test unitaire</SelectItem><SelectItem value="Test d’intégration">Test d’intégration</SelectItem><SelectItem value="Test système">Test système</SelectItem><SelectItem value="Test d’acceptation">Test d’acceptation</SelectItem></SelectContent></Select></FormItem>
                             )} />
                              <FormField control={control} name="testResult" render={({ field }) => (
-                                <FormItem><FormLabel>Résultat du test</FormLabel><Select onValueChange={field.onChange}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Conforme">Conforme</SelectItem><SelectItem value="Non conforme">Non conforme</SelectItem></SelectContent></Select></FormItem>
+                                <FormItem><FormLabel>Résultat du test</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Conforme">Conforme</SelectItem><SelectItem value="Non conforme">Non conforme</SelectItem></SelectContent></Select></FormItem>
                             )} />
                             <FormField control={control} name="documentReference" render={({ field }) => (<FormItem><FormLabel>Référence de document</FormLabel><FormControl><Input placeholder="SPEC-V2-REQ-004" {...field} /></FormControl></FormItem>)} />
                         </MethodologySection>
@@ -439,7 +501,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                         <AccordionContent>
                            <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
                              <FormField control={control} name="isBillable" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Facturable ?</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                             <FormField control={control} name="hourlyRate" render={({ field }) => (<FormItem><FormLabel>Taux horaire</FormLabel><FormControl><Input type="number" placeholder="50" {...field} /></FormControl></FormItem>)} />
+                             <FormField control={control} name="hourlyRate" render={({ field }) => (<FormItem><FormLabel>Taux horaire</FormLabel><FormControl><Input type="number" placeholder="50" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
                              <FormField control={control} name="managerComments" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaires du manager</FormLabel><FormControl><Textarea placeholder="Ajouter un commentaire..." {...field} /></FormControl></FormItem>)} />
                            </div>
                         </AccordionContent>
@@ -513,17 +575,26 @@ function RecentEntriesList({ projects, selectedUserId }) {
 }
 
 export default function TimesheetPage() {
-    const { user } = useUser();
-    const { userProfile } = useUser();
+    const { user, userProfile } = useUser();
     const firestore = useFirestore();
 
+    // This state will hold the ID of the user whose timesheet is being viewed.
+    // For managers, it can be changed. For employees, it's fixed to their own ID.
     const [viewedUserId, setViewedUserId] = useState<string | undefined>();
+    
+    const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
 
     useEffect(() => {
+        // When the user loads, set the initial viewed user.
         if (user && !viewedUserId) {
             setViewedUserId(user.uid);
         }
-    }, [user, viewedUserId]);
+        // If a non-manager is somehow viewing another user, reset to themselves.
+        if (user && !isManager && viewedUserId !== user.uid) {
+            setViewedUserId(user.uid);
+        }
+    }, [user, isManager, viewedUserId]);
+
 
     const projectsQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
@@ -532,6 +603,18 @@ export default function TimesheetPage() {
         );
     }, [firestore, userProfile?.companyId]);
     const { data: projects, loading: projectsLoading } = useCollection<Project>(projectsQuery);
+
+    // This function will be passed to the form to update the list when a new entry is added.
+    const handleEntryAdded = (userIdOfNewEntry: string) => {
+        setViewedUserId(userIdOfNewEntry);
+    };
+
+    // This function is for managers to switch between employees.
+    const handleUserChange = (newUserId: string) => {
+        if (isManager) {
+            setViewedUserId(newUserId);
+        }
+    };
 
   return (
     <>
@@ -543,15 +626,15 @@ export default function TimesheetPage() {
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
             <TimesheetForm 
-                onEntryAdded={setViewedUserId}
+                onEntryAdded={handleEntryAdded}
                 projects={projects ?? []}
                 projectsLoading={projectsLoading}
                 viewedUserId={viewedUserId}
-                onUserChange={setViewedUserId}
+                onUserChange={handleUserChange}
             />
         </div>
         <div className="lg:col-span-1">
-            <RecentEntriesList projects={projects ?? []} selectedUserId={viewedUserId} />
+            {viewedUserId && <RecentEntriesList projects={projects ?? []} selectedUserId={viewedUserId} />}
         </div>
       </div>
     </>
