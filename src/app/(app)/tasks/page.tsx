@@ -356,16 +356,22 @@ export default function TasksPage() {
 
                                             return (
                                                 <React.Fragment key={task.id}>
-                                                    <TableRow>
-                                                        <TableCell style={{ paddingLeft: `${level * 1.5 + 1}rem` }}>
+                                                    <TableRow className="group">
+                                                        <TableCell>
                                                             <Checkbox
                                                                 checked={task.completed}
                                                                 onCheckedChange={(checked) => handleUpdateTask({ ...task, completed: !!checked })}
                                                                 disabled={!canManageTask && userProfile?.uid !== task.assigneeId}
                                                             />
                                                         </TableCell>
-                                                        <TableCell className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                                                            {task.name}
+                                                        <TableCell className="p-0">
+                                                            <div
+                                                                style={{ paddingLeft: `${level * 1.5 + 1}rem` }}
+                                                                className={cn('flex items-center gap-2 h-full px-4 font-medium', task.completed && 'line-through text-muted-foreground')}
+                                                            >
+                                                                {level > 0 && <CornerDownRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                                                                <span>{task.name}</span>
+                                                            </div>
                                                         </TableCell>
                                                         <TableCell>
                                                             <AssigneeCombobox
@@ -378,12 +384,12 @@ export default function TasksPage() {
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             {canAddSubtask && (
-                                                                <Button variant="ghost" size="icon" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
+                                                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => { setAddingSubtaskTo(task.id); setNewSubtaskName(''); }}>
                                                                     <CornerDownRight className="w-4 h-4" />
                                                                 </Button>
                                                             )}
                                                             {canManageTask && (
-                                                                <Button variant="ghost" size="icon" onClick={() => handleRemoveTask(task.id)}>
+                                                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100" onClick={() => handleRemoveTask(task.id)}>
                                                                     <Trash2 className="w-4 h-4 text-destructive" />
                                                                 </Button>
                                                             )}
