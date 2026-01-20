@@ -91,11 +91,8 @@ const timesheetSchema = z.object({
 
 function MethodologySection({ title, children }: { title: string, children: React.ReactNode }) {
     return (
-        <div className="mt-6 border-t pt-6">
-            <h3 className="text-lg font-semibold tracking-tight text-foreground mb-4">{title}</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {children}
-            </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {children}
         </div>
     )
 }
@@ -242,10 +239,10 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
         return;
     }
 
-    const payload = { ...data };
+    const payload: Partial<Timesheet> = { ...data };
     // Firestore doesn't accept undefined values.
     Object.keys(payload).forEach(key => {
-      if (payload[key] === undefined) {
+      if (payload[key] === undefined || payload[key] === null || payload[key] === '') {
         delete payload[key];
       }
     });
@@ -288,311 +285,329 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                     <CardTitle>Nouvelle Entrée</CardTitle>
                     <CardDescription>Renseignez les détails de votre travail.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <h3 className="text-lg font-semibold tracking-tight text-foreground">Informations générales</h3>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {isManager ? (
-                             <FormField control={control} name="userId" render={({ field }) => (
+                <CardContent className="space-y-8">
+                    <div>
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground mb-4">Informations générales</h3>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                             {isManager ? (
+                                <FormField control={control} name="userId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Employé</FormLabel>
+                                        <Select onValueChange={(value) => { field.onChange(value); onUserChange(value); }} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue placeholder="Sélectionner un employé" /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
+                                                (companyUsers ?? []).map(u => <SelectItem key={u.uid} value={u.uid}>{u.displayName}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            ) : (
+                                <FormField control={control} name="userId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Employé</FormLabel>
+                                        <Input readOnly value={userProfile?.displayName || ''} />
+                                    </FormItem>
+                                )} />
+                            )}
+                            <FormField control={control} name="projectId" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Employé</FormLabel>
-                                    <Select onValueChange={(value) => { field.onChange(value); onUserChange(value); }} value={field.value}>
+                                    <FormLabel>Projet</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Sélectionner un employé" /></SelectTrigger>
+                                            <SelectTrigger><SelectValue placeholder="Sélectionner un projet" /></SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
-                                            (companyUsers ?? []).map(u => <SelectItem key={u.uid} value={u.uid}>{u.displayName}</SelectItem>)}
+                                            {projectsLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
+                                            (projects ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.methodology})</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                        ) : (
-                            <FormField control={control} name="userId" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Employé</FormLabel>
-                                    <Input readOnly value={userProfile?.displayName || ''} />
-                                </FormItem>
-                            )} />
-                        )}
-                        <FormField control={control} name="projectId" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Projet</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Sélectionner un projet" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {projectsLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
-                                        (projects ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.methodology})</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
 
-                        <FormField control={control} name="date" render={({ field }) => (
-                           <FormItem className="flex flex-col">
-                                <FormLabel>Date</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
+                            <FormField control={control} name="taskId" render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                    <FormLabel>Tâche principale</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedProjectId}>
                                         <FormControl>
-                                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                {field.value ? format(field.value, "PPP") : <span>Choisir une date</span>}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
+                                            <SelectTrigger><SelectValue placeholder="Sélectionner une tâche" /></SelectTrigger>
                                         </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        
-                        <div className="grid grid-cols-3 gap-2">
-                             <FormField control={control} name="startTime" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Début</FormLabel>
-                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                        <SelectContent>
+                                            {tasksForSelectedProject.length > 0 ?
+                                                tasksForSelectedProject.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)
+                                                :
+                                                <SelectItem value="no-task" disabled>
+                                                    {selectedProjectId ? "Aucune tâche pour ce projet" : "Sélectionner un projet d'abord"}
+                                                </SelectItem>
+                                            }
+                                        </SelectContent>
+                                    </Select>
                                     <FormMessage />
-                                </FormItem>
-                            )} />
-                             <FormField control={control} name="endTime" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Fin</FormLabel>
-                                    <FormControl><Input type="time" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                             <FormField control={control} name="duration" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Durée (h)</FormLabel>
-                                    <FormControl><Input type="number" readOnly {...field} value={field.value ?? 0} /></FormControl>
                                 </FormItem>
                             )} />
                         </div>
-
-                         <FormField control={control} name="taskId" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Tâche principale</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedProjectId}>
-                                    <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Sélectionner une tâche" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {tasksForSelectedProject.length > 0 ?
-                                            tasksForSelectedProject.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)
-                                            :
-                                            <SelectItem value="no-task" disabled>
-                                                {selectedProjectId ? "Aucune tâche pour ce projet" : "Sélectionner un projet d'abord"}
-                                            </SelectItem>
-                                        }
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <FormField control={control} name="workType" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Type de travail</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Développement">Développement</SelectItem>
-                                        <SelectItem value="Test">Test</SelectItem>
-                                        <SelectItem value="Réunion">Réunion</SelectItem>
-                                        <SelectItem value="Documentation">Documentation</SelectItem>
-                                        <SelectItem value="Support / Maintenance">Support / Maintenance</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <FormField control={control} name="status" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Statut</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Sélectionner un statut" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                       <SelectItem value="En cours">En cours</SelectItem>
-                                       <SelectItem value="Terminé">Terminé</SelectItem>
-                                       <SelectItem value="Bloqué">Bloqué</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        
-                         <FormField control={control} name="notes" render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                                <FormLabel>Description de la tâche</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Décrivez le travail effectué..." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
                     </div>
 
-                    <div className="md:col-span-2 space-y-4 border-t pt-4">
-                        <h3 className="text-lg font-semibold tracking-tight text-foreground">Livrables</h3>
-                        <FormField control={control} name="deliverableDescription" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Description du livrable</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Décrivez le livrable, ex: maquette de la page d'accueil, rapport d'analyse..." {...field} value={field.value ?? ''} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormItem>
-                            <FormLabel>Images du livrable</FormLabel>
-                            <FormControl>
-                                <Input 
-                                    type="file" 
-                                    accept="image/png, image/jpeg, image/gif"
-                                    multiple
-                                    onChange={handleImageUpload}
-                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        {imageUrls && imageUrls.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {imageUrls.map((src, index) => (
-                                    <div key={index} className="relative group aspect-square">
-                                        <Image src={src} alt={`Aperçu du livrable ${index + 1}`} fill sizes="150px" className="object-cover rounded-md" />
-                                        <Button
-                                            type="button"
-                                            variant="destructive"
-                                            size="icon"
-                                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
-                                            onClick={() => handleRemoveImage(index)}
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
+                    <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground mb-4">Saisie du temps</h3>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <FormField control={control} name="date" render={({ field }) => (
+                               <FormItem className="flex flex-col">
+                                    <FormLabel>Date</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP") : <span>Choisir une date</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+
+                             <div className="grid grid-cols-3 gap-2">
+                                 <FormField control={control} name="startTime" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Début</FormLabel>
+                                        <FormControl><Input type="time" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={control} name="endTime" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Fin</FormLabel>
+                                        <FormControl><Input type="time" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={control} name="duration" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Durée (h)</FormLabel>
+                                        <FormControl><Input type="number" readOnly {...field} value={field.value ?? 0} /></FormControl>
+                                    </FormItem>
+                                )} />
                             </div>
-                        )}
+
+                            <FormField control={control} name="workType" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Type de travail</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Sélectionner un type" /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Développement">Développement</SelectItem>
+                                            <SelectItem value="Test">Test</SelectItem>
+                                            <SelectItem value="Réunion">Réunion</SelectItem>
+                                            <SelectItem value="Documentation">Documentation</SelectItem>
+                                            <SelectItem value="Support / Maintenance">Support / Maintenance</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+
+                            <FormField control={control} name="status" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Statut</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Sélectionner un statut" /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                           <SelectItem value="En cours">En cours</SelectItem>
+                                           <SelectItem value="Terminé">Terminé</SelectItem>
+                                           <SelectItem value="Bloqué">Bloqué</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
                     </div>
 
-                    {methodology === 'Agile' && (
-                        <MethodologySection title="Détails - Agile">
-                             <FormField control={control} name="agileFramework" render={({ field }) => (
+                    <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground mb-4">Description du travail effectué</h3>
+                        <FormField control={control} name="notes" render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <Textarea placeholder="Décrivez en détail le travail que vous avez accompli..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+
+                    <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground">Livrables</h3>
+                        <div className="space-y-4 pt-4">
+                            <FormField control={control} name="deliverableDescription" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Framework Agile</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                           <SelectItem value="Scrum">Scrum</SelectItem>
-                                           <SelectItem value="Kanban">Kanban</SelectItem>
-                                           <SelectItem value="XP">XP</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <FormLabel>Description du livrable</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Décrivez le livrable, ex: maquette de la page d'accueil, rapport d'analyse..." {...field} value={field.value ?? ''} />
+                                    </FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={control} name="sprintNumber" render={({ field }) => (<FormItem><FormLabel>N° de Sprint</FormLabel><FormControl><Input type="number" placeholder="12" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={control} name="userStoryId" render={({ field }) => (<FormItem><FormLabel>ID User Story</FormLabel><FormControl><Input placeholder="PROJ-123" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
-                             <FormField control={control} name="agileTaskType" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Type de tâche Agile</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                           <SelectItem value="Feature">Feature</SelectItem>
-                                           <SelectItem value="Bug">Bug</SelectItem>
-                                           <SelectItem value="Refactoring">Refactoring</SelectItem>
-                                           <SelectItem value="Spike">Spike</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )} />
-                            <FormField control={control} name="isBlocked" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Blocage / Impediment</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                            {watch('isBlocked') && <FormField control={control} name="blockerComment" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaire sur le blocage</FormLabel><FormControl><Textarea placeholder="Décrire le blocage..." {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />}
-                        </MethodologySection>
+                            <FormItem>
+                                <FormLabel>Images du livrable</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        type="file" 
+                                        accept="image/png, image/jpeg, image/gif"
+                                        multiple
+                                        onChange={handleImageUpload}
+                                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            {imageUrls && imageUrls.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    {imageUrls.map((src, index) => (
+                                        <div key={index} className="relative group aspect-square">
+                                            <Image src={src} alt={`Aperçu du livrable ${index + 1}`} fill sizes="150px" className="object-cover rounded-md" />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                                                onClick={() => handleRemoveImage(index)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {methodology && (
+                        <div className="border-t pt-6">
+                             <h3 className="text-lg font-semibold tracking-tight text-foreground mb-4">Détails - {methodology}</h3>
+                             {methodology === 'Agile' && (
+                                <MethodologySection title="">
+                                     <FormField control={control} name="agileFramework" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Framework Agile</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                   <SelectItem value="Scrum">Scrum</SelectItem>
+                                                   <SelectItem value="Kanban">Kanban</SelectItem>
+                                                   <SelectItem value="XP">XP</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={control} name="sprintNumber" render={({ field }) => (<FormItem><FormLabel>N° de Sprint</FormLabel><FormControl><Input type="number" placeholder="12" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={control} name="userStoryId" render={({ field }) => (<FormItem><FormLabel>ID User Story</FormLabel><FormControl><Input placeholder="PROJ-123" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                     <FormField control={control} name="agileTaskType" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Type de tâche Agile</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                   <SelectItem value="Feature">Feature</SelectItem>
+                                                   <SelectItem value="Bug">Bug</SelectItem>
+                                                   <SelectItem value="Refactoring">Refactoring</SelectItem>
+                                                   <SelectItem value="Spike">Spike</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={control} name="isBlocked" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Blocage / Impediment</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                                    {watch('isBlocked') && <FormField control={control} name="blockerComment" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaire sur le blocage</FormLabel><FormControl><Textarea placeholder="Décrire le blocage..." {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />}
+                                </MethodologySection>
+                            )}
+                            
+                            {methodology === 'Cascade' && (
+                                <MethodologySection title="">
+                                     <FormField control={control} name="projectPhase" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Phase du projet</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                   <SelectItem value="Analyse des besoins">Analyse des besoins</SelectItem>
+                                                   <SelectItem value="Conception">Conception</SelectItem>
+                                                   <SelectItem value="Développement">Développement</SelectItem>
+                                                   <SelectItem value="Tests">Tests</SelectItem>
+                                                   <SelectItem value="Déploiement">Déploiement</SelectItem>
+                                                   <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={control} name="wbsCode" render={({ field }) => (<FormItem><FormLabel>Code de la tâche (WBS)</FormLabel><FormControl><Input placeholder="1.2.3" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                                    <FormField control={control} name="validationStatus" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Validation</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                   <SelectItem value="En attente">En attente</SelectItem>
+                                                   <SelectItem value="Validé">Validé</SelectItem>
+                                                   <SelectItem value="Rejeté">Rejeté</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )} />
+                                </MethodologySection>
+                            )}
+
+                            {methodology === 'Cycle en V' && (
+                                <MethodologySection title="">
+                                     <FormField control={control} name="developmentPhase" render={({ field }) => (
+                                        <FormItem><FormLabel>Phase de développement</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Spécification">Spécification</SelectItem><SelectItem value="Conception">Conception</SelectItem><SelectItem value="Implémentation">Implémentation</SelectItem></SelectContent></Select></FormItem>
+                                    )} />
+                                     <FormField control={control} name="associatedTestPhase" render={({ field }) => (
+                                        <FormItem><FormLabel>Phase de test associée</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Test unitaire">Test unitaire</SelectItem><SelectItem value="Test d’intégration">Test d’intégration</SelectItem><SelectItem value="Test système">Test système</SelectItem><SelectItem value="Test d’acceptation">Test d’acceptation</SelectItem></SelectContent></Select></FormItem>
+                                    )} />
+                                     <FormField control={control} name="testResult" render={({ field }) => (
+                                        <FormItem><FormLabel>Résultat du test</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Conforme">Conforme</SelectItem><SelectItem value="Non conforme">Non conforme</SelectItem></SelectContent></Select></FormItem>
+                                    )} />
+                                    <FormField control={control} name="documentReference" render={({ field }) => (<FormItem><FormLabel>Référence de document</FormLabel><FormControl><Input placeholder="SPEC-V2-REQ-004" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                                </MethodologySection>
+                            )}
+
+                            {methodology === 'Hybride' && (
+                                <MethodologySection title="">
+                                    <FormField control={control} name="iterationGoal" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Objectif de l’itération</FormLabel><FormControl><Input placeholder="Finaliser le module de paiement" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                                    <FormField control={control} name="kpiTracked" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>KPI suivi</FormLabel><FormControl><Input placeholder="Vélocité de l'équipe" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                                </MethodologySection>
+                            )}
+                        </div>
                     )}
                     
-                    {methodology === 'Cascade' && (
-                        <MethodologySection title="Détails - Cascade">
-                             <FormField control={control} name="projectPhase" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Phase du projet</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                           <SelectItem value="Analyse des besoins">Analyse des besoins</SelectItem>
-                                           <SelectItem value="Conception">Conception</SelectItem>
-                                           <SelectItem value="Développement">Développement</SelectItem>
-                                           <SelectItem value="Tests">Tests</SelectItem>
-                                           <SelectItem value="Déploiement">Déploiement</SelectItem>
-                                           <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )} />
-                            <FormField control={control} name="wbsCode" render={({ field }) => (<FormItem><FormLabel>Code de la tâche (WBS)</FormLabel><FormControl><Input placeholder="1.2.3" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
-                            <FormField control={control} name="validationStatus" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Validation</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                           <SelectItem value="En attente">En attente</SelectItem>
-                                           <SelectItem value="Validé">Validé</SelectItem>
-                                           <SelectItem value="Rejeté">Rejeté</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )} />
-                        </MethodologySection>
-                    )}
-
-                    {methodology === 'Cycle en V' && (
-                        <MethodologySection title="Détails - Cycle en V">
-                             <FormField control={control} name="developmentPhase" render={({ field }) => (
-                                <FormItem><FormLabel>Phase de développement</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Spécification">Spécification</SelectItem><SelectItem value="Conception">Conception</SelectItem><SelectItem value="Implémentation">Implémentation</SelectItem></SelectContent></Select></FormItem>
-                            )} />
-                             <FormField control={control} name="associatedTestPhase" render={({ field }) => (
-                                <FormItem><FormLabel>Phase de test associée</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Test unitaire">Test unitaire</SelectItem><SelectItem value="Test d’intégration">Test d’intégration</SelectItem><SelectItem value="Test système">Test système</SelectItem><SelectItem value="Test d’acceptation">Test d’acceptation</SelectItem></SelectContent></Select></FormItem>
-                            )} />
-                             <FormField control={control} name="testResult" render={({ field }) => (
-                                <FormItem><FormLabel>Résultat du test</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Conforme">Conforme</SelectItem><SelectItem value="Non conforme">Non conforme</SelectItem></SelectContent></Select></FormItem>
-                            )} />
-                            <FormField control={control} name="documentReference" render={({ field }) => (<FormItem><FormLabel>Référence de document</FormLabel><FormControl><Input placeholder="SPEC-V2-REQ-004" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
-                        </MethodologySection>
-                    )}
-
-                    {methodology === 'Hybride' && (
-                        <MethodologySection title="Détails - Hybride">
-                            <FormField control={control} name="iterationGoal" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Objectif de l’itération</FormLabel><FormControl><Input placeholder="Finaliser le module de paiement" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
-                            <FormField control={control} name="kpiTracked" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>KPI suivi</FormLabel><FormControl><Input placeholder="Vélocité de l'équipe" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
-                        </MethodologySection>
-                    )}
-                    
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="item-1">
-                        <AccordionTrigger>
-                          <h3 className="text-lg font-semibold tracking-tight text-foreground">Options avancées</h3>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                           <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
-                             <FormField control={control} name="isBillable" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Facturable ?</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                             <FormField control={control} name="hourlyRate" render={({ field }) => (<FormItem><FormLabel>Taux horaire</FormLabel><FormControl><Input type="number" placeholder="50" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
-                             <FormField control={control} name="managerComments" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaires du manager</FormLabel><FormControl><Textarea placeholder="Ajouter un commentaire..." {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
-                           </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <div className="border-t pt-6">
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="item-1">
+                            <AccordionTrigger>
+                              <h3 className="text-lg font-semibold tracking-tight text-foreground">Options avancées</h3>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                               <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
+                                 <FormField control={control} name="isBillable" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Facturable ?</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                                 <FormField control={control} name="hourlyRate" render={({ field }) => (<FormItem><FormLabel>Taux horaire</FormLabel><FormControl><Input type="number" placeholder="50" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                 <FormField control={control} name="managerComments" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaires du manager</FormLabel><FormControl><Textarea placeholder="Ajouter un commentaire..." {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                               </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                    </div>
 
 
                 </CardContent>
@@ -616,19 +631,13 @@ function RecentEntriesList({ projects, selectedUserId, isManager, userProfile })
         if (!userProfile?.companyId || !selectedUserId) return null;
         return query(
             collection(firestore, 'companies', userProfile.companyId, 'timesheets') as collection<Timesheet>,
-            where('userId', '==', selectedUserId)
+            where('userId', '==', selectedUserId),
+            orderBy('createdAt', 'desc'),
+            limit(10)
         );
     }, [firestore, userProfile?.companyId, selectedUserId]);
-    const { data, loading: timesheetsLoading } = useCollection<Timesheet>(timesheetQuery);
     
-    const timesheets = useMemo(() => {
-        if (!data) return [];
-        // Sort by date descending, then take the first 10
-        return data
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 10);
-    }, [data]);
-
+    const { data: timesheets, loading: timesheetsLoading } = useCollection<Timesheet>(timesheetQuery);
 
     const getProjectName = useCallback((projectId: string) => {
         return projects?.find(p => p.id === projectId)?.name ?? projectId;
@@ -724,7 +733,7 @@ function RecentEntriesList({ projects, selectedUserId, isManager, userProfile })
                 <AlertDialogHeader>
                   <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Cette action est irréversible. L'entrée de feuille de temps du <span className="font-bold">{deleteTarget?.date}</span> d'une durée de <span className="font-bold">{deleteTarget?.duration}h</span> sera définitivement supprimée.
+                    Cette action est irréversible. L'entrée de feuille de temps du <span className="font-bold">{deleteTarget?.date ? format(new Date(deleteTarget.date), "PPP") : ""}</span> d'une durée de <span className="font-bold">{deleteTarget?.duration}h</span> sera définitivement supprimée.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -739,7 +748,6 @@ function RecentEntriesList({ projects, selectedUserId, isManager, userProfile })
 
 export default function TimesheetPage() {
     const { user, userProfile, loading: userLoading } = useUser();
-    const firestore = useFirestore();
     const [viewedUserId, setViewedUserId] = useState<string | undefined>();
     
     const isManager = useMemo(() => 
