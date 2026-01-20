@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,11 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
 import { Project, Timesheet, UserProfile } from '@/lib/types';
-import { addDoc, collection, query, serverTimestamp, where, orderBy, limit } from 'firebase/firestore';
+import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, MoreHorizontal } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,9 @@ import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 
 const timesheetSchema = z.object({
@@ -71,6 +75,16 @@ const timesheetSchema = z.object({
   hourlyRate: z.coerce.number().optional(),
   managerComments: z.string().optional(),
 
+}).refine(data => {
+    if (data.startTime && data.endTime) {
+        const [startH, startM] = data.startTime.split(':').map(Number);
+        const [endH, endM] = data.endTime.split(':').map(Number);
+        return endH > startH || (endH === startH && endM > startM);
+    }
+    return true;
+}, {
+    message: "L'heure de fin doit être après l'heure de début.",
+    path: ["endTime"],
 });
 
 function MethodologySection({ title, children }: { title: string, children: React.ReactNode }) {
@@ -84,8 +98,7 @@ function MethodologySection({ title, children }: { title: string, children: Reac
     )
 }
 
-function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, onUserChange }) {
-  const { userProfile } = useUser();
+function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, onUserChange, userProfile }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -145,24 +158,21 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
   const startTime = watch('startTime');
   const endTime = watch('endTime');
   
-  // Update user ID in form when manager changes selection
   useEffect(() => {
-    setValue('userId', viewedUserId || '');
-  }, [viewedUserId, setValue]);
+    setValue('userId', viewedUserId || userProfile?.uid || '');
+  }, [viewedUserId, userProfile, setValue]);
   
-  // Reset task when project changes
   useEffect(() => {
     setValue('taskId', '');
   }, [selectedProjectId, setValue]);
 
-  // Calculate duration
   useEffect(() => {
     if (startTime && endTime) {
         const [startH, startM] = startTime.split(':').map(Number);
         const [endH, endM] = endTime.split(':').map(Number);
         const startDate = new Date(0, 0, 0, startH, startM);
         const endDate = new Date(0, 0, 0, endH, endM);
-        if (endDate < startDate) endDate.setDate(endDate.getDate() + 1); // Handle overnight work
+        if (endDate < startDate) endDate.setDate(endDate.getDate() + 1);
         const diff = differenceInMinutes(endDate, startDate);
         setValue('duration', parseFloat((diff / 60).toFixed(2)));
     } else {
@@ -201,29 +211,10 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
         
         const currentValues = getValues();
         reset({
-            ...currentValues, // Keep userId, projectId, etc.
-            taskId: '',
-            startTime: '',
-            endTime: '',
-            duration: 0,
-            notes: '',
-            // Reset methodology-specific fields
-            agileFramework: '',
-            sprintNumber: undefined,
-            userStoryId: '',
-            agileTaskType: '',
-            isBlocked: false,
-            blockerComment: '',
-            projectPhase: '',
-            wbsCode: '',
-            deliverable: '',
-            validationStatus: '',
-            developmentPhase: '',
-            associatedTestPhase: '',
-            testResult: '',
-            documentReference: '',
-            iterationGoal: '',
-            kpiTracked: '',
+            ...form.formState.defaultValues,
+            userId: currentValues.userId,
+            date: currentValues.date,
+            projectId: currentValues.projectId,
         });
 
         onEntryAdded(data.userId);
@@ -399,7 +390,6 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                         )} />
                     </div>
 
-                    {/* DYNAMIC METHODOLOGY FIELDS */}
                     {methodology === 'Agile' && (
                         <MethodologySection title="Détails - Agile">
                              <FormField control={control} name="agileFramework" render={({ field }) => (
@@ -416,7 +406,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                 </FormItem>
                             )} />
                             <FormField control={control} name="sprintNumber" render={({ field }) => (<FormItem><FormLabel>N° de Sprint</FormLabel><FormControl><Input type="number" placeholder="12" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={control} name="userStoryId" render={({ field }) => (<FormItem><FormLabel>ID User Story</FormLabel><FormControl><Input placeholder="PROJ-123" {...field} /></FormControl></FormItem>)} />
+                            <FormField control={control} name="userStoryId" render={({ field }) => (<FormItem><FormLabel>ID User Story</FormLabel><FormControl><Input placeholder="PROJ-123" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
                              <FormField control={control} name="agileTaskType" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Type de tâche Agile</FormLabel>
@@ -432,7 +422,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                 </FormItem>
                             )} />
                             <FormField control={control} name="isBlocked" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Blocage / Impediment</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                            {watch('isBlocked') && <FormField control={control} name="blockerComment" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaire sur le blocage</FormLabel><FormControl><Textarea placeholder="Décrire le blocage..." {...field} /></FormControl></FormItem>)} />}
+                            {watch('isBlocked') && <FormField control={control} name="blockerComment" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaire sur le blocage</FormLabel><FormControl><Textarea placeholder="Décrire le blocage..." {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />}
                         </MethodologySection>
                     )}
                     
@@ -454,8 +444,8 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                                     </Select>
                                 </FormItem>
                             )} />
-                            <FormField control={control} name="wbsCode" render={({ field }) => (<FormItem><FormLabel>Code de la tâche (WBS)</FormLabel><FormControl><Input placeholder="1.2.3" {...field} /></FormControl></FormItem>)} />
-                            <FormField control={control} name="deliverable" render={({ field }) => (<FormItem><FormLabel>Livrable associé</FormLabel><FormControl><Input placeholder="Document de specs v1.2" {...field} /></FormControl></FormItem>)} />
+                            <FormField control={control} name="wbsCode" render={({ field }) => (<FormItem><FormLabel>Code de la tâche (WBS)</FormLabel><FormControl><Input placeholder="1.2.3" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                            <FormField control={control} name="deliverable" render={({ field }) => (<FormItem><FormLabel>Livrable associé</FormLabel><FormControl><Input placeholder="Document de specs v1.2" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
                             <FormField control={control} name="validationStatus" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Validation</FormLabel>
@@ -483,14 +473,14 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                              <FormField control={control} name="testResult" render={({ field }) => (
                                 <FormItem><FormLabel>Résultat du test</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Conforme">Conforme</SelectItem><SelectItem value="Non conforme">Non conforme</SelectItem></SelectContent></Select></FormItem>
                             )} />
-                            <FormField control={control} name="documentReference" render={({ field }) => (<FormItem><FormLabel>Référence de document</FormLabel><FormControl><Input placeholder="SPEC-V2-REQ-004" {...field} /></FormControl></FormItem>)} />
+                            <FormField control={control} name="documentReference" render={({ field }) => (<FormItem><FormLabel>Référence de document</FormLabel><FormControl><Input placeholder="SPEC-V2-REQ-004" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
                         </MethodologySection>
                     )}
 
                     {methodology === 'Hybride' && (
                         <MethodologySection title="Détails - Hybride">
-                            <FormField control={control} name="iterationGoal" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Objectif de l’itération</FormLabel><FormControl><Input placeholder="Finaliser le module de paiement" {...field} /></FormControl></FormItem>)} />
-                            <FormField control={control} name="kpiTracked" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>KPI suivi</FormLabel><FormControl><Input placeholder="Vélocité de l'équipe" {...field} /></FormControl></FormItem>)} />
+                            <FormField control={control} name="iterationGoal" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Objectif de l’itération</FormLabel><FormControl><Input placeholder="Finaliser le module de paiement" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                            <FormField control={control} name="kpiTracked" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>KPI suivi</FormLabel><FormControl><Input placeholder="Vélocité de l'équipe" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
                         </MethodologySection>
                     )}
                     
@@ -503,7 +493,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
                            <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
                              <FormField control={control} name="isBillable" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Facturable ?</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                              <FormField control={control} name="hourlyRate" render={({ field }) => (<FormItem><FormLabel>Taux horaire</FormLabel><FormControl><Input type="number" placeholder="50" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
-                             <FormField control={control} name="managerComments" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaires du manager</FormLabel><FormControl><Textarea placeholder="Ajouter un commentaire..." {...field} /></FormControl></FormItem>)} />
+                             <FormField control={control} name="managerComments" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Commentaires du manager</FormLabel><FormControl><Textarea placeholder="Ajouter un commentaire..." {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
                            </div>
                         </AccordionContent>
                       </AccordionItem>
@@ -522,9 +512,10 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, 
   )
 }
 
-function RecentEntriesList({ projects, selectedUserId }) {
-    const { userProfile } = useUser();
+function RecentEntriesList({ projects, selectedUserId, isManager, userProfile }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const [deleteTarget, setDeleteTarget] = useState<Timesheet | null>(null);
 
     const timesheetQuery = useMemo(() => {
         if (!userProfile?.companyId || !selectedUserId) return null;
@@ -537,7 +528,30 @@ function RecentEntriesList({ projects, selectedUserId }) {
     }, [firestore, userProfile?.companyId, selectedUserId]);
     const { data: timesheets, loading: timesheetsLoading } = useCollection<Timesheet>(timesheetQuery);
 
-    const getProjectName = (projectId: string) => projects?.find(p => p.id === projectId)?.name ?? projectId;
+    const getProjectName = useCallback((projectId: string) => {
+        return projects?.find(p => p.id === projectId)?.name ?? projectId;
+    }, [projects]);
+
+    const getTaskName = useCallback((projectId: string, taskId: string) => {
+        if (!projects || !taskId) return 'N/A';
+        const project = projects.find(p => p.id === projectId);
+        if (!project || !project.tasks) return 'N/A';
+        const task = project.tasks.find(t => t.id === taskId);
+        return task?.name ?? 'Tâche non trouvée';
+    }, [projects]);
+
+    const handleDelete = async () => {
+        if (!deleteTarget || !userProfile?.companyId) return;
+        try {
+            const entryRef = doc(firestore, 'companies', userProfile.companyId, 'timesheets', deleteTarget.id);
+            await deleteDoc(entryRef);
+            toast({ title: "Entrée supprimée" });
+            setDeleteTarget(null); // Close dialog
+        } catch (error) {
+            console.error("Error deleting entry:", error);
+            toast({ variant: 'destructive', title: "Erreur", description: "Impossible de supprimer l'entrée." });
+        }
+    };
     
     return (
         <Card>
@@ -551,18 +565,40 @@ function RecentEntriesList({ projects, selectedUserId }) {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Projet</TableHead>
-                                <TableHead>Type de travail</TableHead>
-                                <TableHead className="text-right">Durée (h)</TableHead>
+                                <TableHead>Projet / Tâche</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="text-right">Durée</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {timesheets.map(entry => (
                                 <TableRow key={entry.id}>
-                                    <TableCell>{format(new Date(entry.date), "dd/MM/yyyy")}</TableCell>
-                                    <TableCell>{getProjectName(entry.projectId)}</TableCell>
-                                    <TableCell>{entry.workType}</TableCell>
-                                    <TableCell className="text-right">{entry.duration}</TableCell>
+                                    <TableCell>{format(new Date(entry.date), "dd/MM/yy")}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{getProjectName(entry.projectId)}</div>
+                                        <div className="text-sm text-muted-foreground">{getTaskName(entry.projectId, entry.taskId)}</div>
+                                    </TableCell>
+                                    <TableCell><Badge variant="outline">{entry.status}</Badge></TableCell>
+                                    <TableCell className="text-right">{entry.duration} h</TableCell>
+                                    <TableCell className="text-right">
+                                      {(userProfile?.uid === entry.userId || isManager) && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem disabled>Modifier</DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="text-destructive"
+                                                    onSelect={() => setDeleteTarget(entry)}
+                                                >
+                                                    Supprimer
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      )}
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -571,6 +607,20 @@ function RecentEntriesList({ projects, selectedUserId }) {
                     <p className="text-muted-foreground">Aucune entrée de temps récente pour cet utilisateur.</p>
                 )}
             </CardContent>
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible. L'entrée de feuille de temps du <span className="font-bold">{deleteTarget?.date}</span> d'une durée de <span className="font-bold">{deleteTarget?.duration}h</span> sera définitivement supprimée.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className={buttonVariants({ variant: "destructive" })}>Supprimer</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </Card>
     )
 }
@@ -578,27 +628,19 @@ function RecentEntriesList({ projects, selectedUserId }) {
 export default function TimesheetPage() {
     const { user, userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
-
     const [viewedUserId, setViewedUserId] = useState<string | undefined>();
     
-    const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
+    const isManager = useMemo(() => 
+        userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master'),
+        [userProfile?.roles]
+    );
 
     useEffect(() => {
-        if (userLoading || !user || !userProfile) {
-            return;
-        }
+      if (user && !viewedUserId) {
+        setViewedUserId(user.uid);
+      }
+    }, [user, viewedUserId]);
     
-        if (!isManager) {
-            // Not a manager, so always show their own timesheet.
-            setViewedUserId(user.uid);
-        } else if (isManager && !viewedUserId) {
-            // Is a manager, but no one is selected yet. Default to themself.
-            setViewedUserId(user.uid);
-        }
-        // If isManager and viewedUserId is already set, do nothing. Let the user's selection persist.
-    
-    }, [user, userProfile, isManager, userLoading]);
-
     const projectsQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
         return query(
@@ -632,10 +674,11 @@ export default function TimesheetPage() {
                 projectsLoading={projectsLoading}
                 viewedUserId={viewedUserId}
                 onUserChange={handleUserChange}
+                userProfile={userProfile}
             />
         </div>
         <div className="lg:col-span-1">
-            {viewedUserId && <RecentEntriesList projects={projects ?? []} selectedUserId={viewedUserId} />}
+            {viewedUserId && <RecentEntriesList projects={projects ?? []} selectedUserId={viewedUserId} isManager={isManager} userProfile={userProfile} />}
         </div>
       </div>
     </>
