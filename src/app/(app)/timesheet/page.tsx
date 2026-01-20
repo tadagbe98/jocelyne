@@ -499,8 +499,6 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
     const firestore = useFirestore();
     const { toast } = useToast();
     const isEditing = !!deliverableToEdit;
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
 
     const form = useForm<z.infer<typeof deliverableSchema>>({
       resolver: zodResolver(deliverableSchema),
@@ -620,20 +618,14 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                                 <FormItem><FormLabel>Phase du projet</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Phase"/></SelectTrigger></FormControl><SelectContent>{['Analyse des besoins', 'Conception', 'Développement', 'Tests', 'Déploiement', 'Maintenance'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage/></FormItem>
                             )}/>}
                             <div className="space-y-2">
-                                <FormLabel>Images</FormLabel>
+                                <FormLabel htmlFor="image-upload">Images</FormLabel>
                                  <Input
-                                    ref={fileInputRef}
                                     id="image-upload"
                                     type="file"
                                     multiple
                                     accept="image/*"
                                     onChange={handleImageSelect}
-                                    className="hidden"
                                 />
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Choisir des fichiers...
-                                </Button>
                                 {form.formState.errors.imageUrls && <p className="text-sm text-destructive mt-2">{form.formState.errors.imageUrls.message?.toString()}</p>}
                                 
                                 {imageUrls && imageUrls.length > 0 && (
