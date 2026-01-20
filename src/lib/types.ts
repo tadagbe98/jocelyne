@@ -10,6 +10,18 @@ export interface UserProfile {
   status?: 'active' | 'pending';
 }
 
+export type Company = {
+  id: string;
+  name: string;
+  ownerId: string;
+  creationYear: number;
+  country: string;
+  currency: string;
+  language: string;
+  createdAt: Timestamp;
+  logoUrl?: string;
+};
+
 export type Project = {
   id: string;
   name: string;

@@ -86,6 +86,11 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the company was created."
+        },
+        "logoUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the company logo, stored as a data URL."
         }
       },
       "required": [

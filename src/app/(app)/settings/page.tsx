@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useUser } from "@/firebase/auth/use-user";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
-import { UserProfile } from "@/lib/types";
-import { collection, doc, query, updateDoc, where } from "firebase/firestore";
+import { Company, UserProfile } from "@/lib/types";
+import { collection, doc, query, updateDoc, where, DocumentReference } from "firebase/firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import React, { useEffect } from "react";
@@ -22,12 +22,13 @@ import { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Briefcase } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { createUserForCompany } from "@/firebase/auth/auth";
 import { FirebaseError } from "firebase/app";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 
 const companySchema = z.object({
@@ -36,6 +37,7 @@ const companySchema = z.object({
   country: z.string().min(1, "Le pays est requis."),
   currency: z.string().min(1, "La devise est requise."),
   language: z.string().min(1, "La langue est requise."),
+  logoUrl: z.string().url().optional().nullable(),
 });
 
 function CompanyProfileForm() {
@@ -45,23 +47,35 @@ function CompanyProfileForm() {
     
     const companyRef = React.useMemo(() => {
         if (!userProfile?.companyId) return null;
-        return doc(firestore, 'companies', userProfile.companyId);
+        return doc(firestore, 'companies', userProfile.companyId) as DocumentReference<Company>;
     }, [firestore, userProfile?.companyId]);
 
-    const { data: company, loading: companyLoading } = useDoc(companyRef);
+    const { data: company, loading: companyLoading } = useDoc<Company>(companyRef);
     
-    const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm({
+    const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<z.infer<typeof companySchema>>({
         resolver: zodResolver(companySchema),
-        values: company, // Load initial values from Firestore
     });
+    
+    const currentLogoUrl = watch('logoUrl');
 
     React.useEffect(() => {
         if (company) {
             reset(company);
         }
     }, [company, reset]);
+    
+    const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setValue('logoUrl', reader.result as string, { shouldValidate: true });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
-    const onSubmit = async (data) => {
+    const onSubmit = async (data: z.infer<typeof companySchema>) => {
         if (!companyRef) return;
         try {
             await updateDoc(companyRef, data);
@@ -81,7 +95,27 @@ function CompanyProfileForm() {
                 <CardDescription>Mettez à jour les informations de votre entreprise.</CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit(onSubmit)}>
-                <CardContent className="grid gap-4">
+                <CardContent className="grid gap-6">
+                    <div className="space-y-2">
+                        <Label>Logo de l'entreprise</Label>
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-16 w-16 rounded-md">
+                                <AvatarImage src={currentLogoUrl || undefined} alt="Logo de l'entreprise" />
+                                <AvatarFallback className="rounded-md">
+                                    <Briefcase className="h-8 w-8" />
+                                </AvatarFallback>
+                            </Avatar>
+                             <div className="flex flex-col gap-2">
+                                <Label htmlFor="logo-upload" className={buttonVariants({ variant: "outline" })}>
+                                    Changer le logo
+                                </Label>
+                                <Input id="logo-upload" type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={handleLogoChange} className="hidden" />
+                                {currentLogoUrl && <Button type="button" variant="ghost" size="sm" onClick={() => setValue('logoUrl', null)}>Supprimer</Button>}
+                            </div>
+                        </div>
+                        {errors.logoUrl && <p className="text-sm text-destructive">{errors.logoUrl.message}</p>}
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                             <Label htmlFor="name">Nom de l'entreprise</Label>
