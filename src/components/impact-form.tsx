@@ -1,11 +1,11 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { getImpactIndicatorsAction, type FormState } from '@/app/actions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Textarea } from './ui/textarea';
-import { useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Terminal } from 'lucide-react';
@@ -21,7 +21,7 @@ function SubmitButton() {
 
 export function ImpactForm() {
   const initialState: FormState = { data: null, error: null };
-  const [state, formAction] = useFormState(getImpactIndicatorsAction, initialState);
+  const [state, formAction] = useActionState(getImpactIndicatorsAction, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
 
