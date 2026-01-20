@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { onSnapshot, Query, DocumentData } from 'firebase/firestore';
 
 export function useCollection<T extends DocumentData>(
@@ -8,9 +8,6 @@ export function useCollection<T extends DocumentData>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-
-  // Memoize the path to prevent re-renders if the query object is recreated
-  const queryPath = useMemo(() => query?.toString(), [query]);
 
   useEffect(() => {
     if (!query) {
@@ -38,7 +35,7 @@ export function useCollection<T extends DocumentData>(
     );
 
     return () => unsubscribe();
-  }, [queryPath]); // Use the memoized path as dependency
+  }, [query]);
 
   return { data, loading, error };
 }

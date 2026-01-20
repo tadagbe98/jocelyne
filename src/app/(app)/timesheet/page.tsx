@@ -12,7 +12,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
 import { Deliverable, Project, Timesheet } from '@/lib/types';
 import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, deleteDoc, doc, writeBatch } from 'firebase/firestore';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, MoreHorizontal, X, Timer, Play, Pause, Plus, Link2, Unlink2, ChevronsUpDown, Check, Search } from 'lucide-react';
@@ -359,6 +359,7 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
     const firestore = useFirestore();
     const { toast } = useToast();
     const isEditing = !!deliverableToEdit;
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<z.infer<typeof deliverableSchema>>({
       resolver: zodResolver(deliverableSchema),
@@ -480,6 +481,7 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                                 <div>
                                     <FormControl>
                                         <Input
+                                            ref={imageInputRef}
                                             id="image-upload"
                                             type="file"
                                             multiple
@@ -488,10 +490,10 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                                             className="hidden"
                                         />
                                     </FormControl>
-                                    <Label htmlFor="image-upload" className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer")}>
+                                    <Button type="button" variant="outline" className="cursor-pointer" onClick={() => imageInputRef.current?.click()}>
                                         <Plus className="mr-2 h-4 w-4" />
                                         Ajouter des images
-                                    </Label>
+                                    </Button>
                                     {form.formState.errors.imageUrls && <p className="text-sm text-destructive mt-2">{form.formState.errors.imageUrls.message?.toString()}</p>}
                                 </div>
                                 {imageUrls && imageUrls.length > 0 && (
