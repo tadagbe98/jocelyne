@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Calendar, CircleDollarSign, ListChecks, Plus, Trash2, Workflow } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -23,192 +23,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
-function ProjectPlan({ project, projectRef, toast }: { project: Project, projectRef: DocumentReference<Project>, toast: ReturnType<typeof useToast>['toast'] }) {
+function ProjectPlan({ project }: { project: Project }) {
     const { userProfile } = useUser();
-    const firestore = useFirestore();
-    
     const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
-
-    const companyUsersQuery = useMemo(() => {
-        if (!userProfile?.companyId) return null;
-        return query(
-            collection(firestore, 'users') as collection<UserProfile>,
-            where('companyId', '==', userProfile.companyId)
-        );
-    }, [firestore, userProfile?.companyId]);
-    const { data: companyUsers, loading: usersLoading } = useCollection<UserProfile>(companyUsersQuery);
-
-    const [newTask, setNewTask] = useState('');
-    const [assigneeId, setAssigneeId] = useState<string | undefined>();
-
-    const handleAddTask = async () => {
-        if (newTask.trim() === '') return;
-        const newTaskObject: Task = {
-            id: `t${Date.now()}`, // Simple unique ID
-            name: newTask.trim(),
-            completed: false,
-            dueDate: new Date().toISOString().split('T')[0],
-            assigneeId: assigneeId === 'unassigned' ? undefined : assigneeId
-        };
-        try {
-            const updatedTasks = [...project.tasks, newTaskObject];
-            await updateDoc(projectRef, {
-                tasks: updatedTasks
-            });
-            setNewTask('');
-            setAssigneeId(undefined);
-        } catch (error) {
-            console.error("Error adding task:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Erreur',
-                description: "Impossible d'ajouter la tâche. Vérifiez vos permissions.",
-            });
-        }
-    };
-
-    const toggleTask = async (task: Task) => {
-        const updatedTasks = project.tasks.map(t =>
-            t.id === task.id ? { ...t, completed: !t.completed } : t
-        );
-        try {
-            await updateDoc(projectRef, { tasks: updatedTasks });
-        } catch (error) {
-            console.error("Error toggling task:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Erreur',
-                description: "Impossible de modifier la tâche. Veuillez réessayer.",
-            });
-        }
-    };
-    
-    const handleRemoveTask = async (taskId: string) => {
-        try {
-            const updatedTasks = project.tasks.filter(t => t.id !== taskId);
-            await updateDoc(projectRef, {
-                tasks: updatedTasks
-            });
-        } catch (error) {
-            console.error("Error removing task:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Erreur',
-                description: "Impossible de supprimer la tâche. Veuillez réessayer.",
-            });
-        }
-    };
-
-    const handleAssignTask = async (taskId: string, newAssigneeId: string) => {
-        const updatedTasks = project.tasks.map(t =>
-            t.id === taskId ? { ...t, assigneeId: newAssigneeId === 'unassigned' ? undefined : newAssigneeId } : t
-        );
-        try {
-            await updateDoc(projectRef, { tasks: updatedTasks });
-            toast({
-                title: "Tâche assignée",
-                description: "L'assignation de la tâche a été mise à jour."
-            });
-        } catch (error) {
-            console.error("Error assigning task:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Erreur',
-                description: "Impossible de modifier l'assignation. Veuillez réessayer.",
-            });
-        }
-    };
-
-    const getInitials = (name: string | null | undefined) => {
-        if (!name) return '';
-        const initials = name.split(' ').map((n) => n[0]).join('');
-        return initials.toUpperCase();
-    };
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Plan de projet (To-do list)</CardTitle>
-                <CardDescription>Organisez et assignez les activités de votre projet.</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Plan de projet</CardTitle>
+                        <CardDescription>Liste des tâches prévues pour ce projet.</CardDescription>
+                    </div>
+                    {isManager && (
+                        <Link href="/tasks" className={buttonVariants({ variant: "outline" })}>
+                            Gérer les tâches
+                            <ListChecks className="w-4 h-4 ml-2" />
+                        </Link>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
-                {isManager && (
-                    <div className="flex flex-col gap-2 mb-4 sm:flex-row">
-                        <Input 
-                            value={newTask} 
-                            onChange={(e) => setNewTask(e.target.value)} 
-                            placeholder="Ajouter une nouvelle tâche..." 
-                            className="flex-grow"
-                        />
-                        <Select onValueChange={setAssigneeId} value={assigneeId || ''}>
-                            <SelectTrigger className="w-full sm:w-[200px]">
-                                <SelectValue placeholder="Assigner à..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="unassigned">Non assigné</SelectItem>
-                                {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
-                                (companyUsers || []).map(user => (
-                                    <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={handleAddTask} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Ajouter</Button>
-                    </div>
-                )}
-                <div className="space-y-2">
-                    <TooltipProvider>
-                        {project.tasks.map(task => {
-                            const assignedUser = companyUsers?.find(u => u.uid === task.assigneeId);
-                            return (
-                                <div key={task.id} className="flex items-center p-2 rounded-md hover:bg-muted/50">
-                                    <Checkbox id={`task-${task.id}`} checked={task.completed} onCheckedChange={() => toggleTask(task)} className="mr-4" />
-                                    <label htmlFor={`task-${task.id}`} className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                                        {task.name}
-                                    </label>
-                                    
-                                    {isManager ? (
-                                        <Select
-                                            value={task.assigneeId || 'unassigned'}
-                                            onValueChange={(newAssigneeId) => handleAssignTask(task.id, newAssigneeId)}
-                                        >
-                                            <SelectTrigger className="w-[180px] ml-auto mr-2 h-8 text-xs">
-                                                <SelectValue placeholder="Assigner..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="unassigned">Non assigné</SelectItem>
-                                                {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
-                                                (companyUsers || []).map(user => (
-                                                    <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        assignedUser && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Avatar className="w-6 h-6 ml-auto mr-2">
-                                                        <AvatarImage src={assignedUser.photoURL || ''} alt={assignedUser.displayName || ''} />
-                                                        <AvatarFallback>{getInitials(assignedUser.displayName)}</AvatarFallback>
-                                                    </Avatar>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Assigné à {assignedUser.displayName}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )
-                                    )}
-
-                                    {isManager && (
-                                        <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemoveTask(task.id)}>
-                                            <Trash2 className="w-4 h-4 text-destructive" />
-                                        </Button>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </TooltipProvider>
-                </div>
+                <ul className="space-y-2">
+                    {(project.tasks || []).map(task => (
+                        <li key={task.id} className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
+                            <Checkbox id={`task-${task.id}`} checked={task.completed} disabled />
+                            <label htmlFor={`task-${task.id}`} className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                {task.name}
+                            </label>
+                        </li>
+                    ))}
+                    {(project.tasks?.length === 0 || !project.tasks) && (
+                        <p className="text-sm text-muted-foreground text-center py-4">Aucune tâche définie pour ce projet.</p>
+                    )}
+                </ul>
             </CardContent>
         </Card>
     );
@@ -414,7 +264,7 @@ export default function ProjectDetailsPage() {
                 </TabsContent>
                 
                 <TabsContent value="plan">
-                    <ProjectPlan project={project} projectRef={projectRef!} toast={toast} />
+                    <ProjectPlan project={project} />
                 </TabsContent>
 
                 <TabsContent value="budget">

@@ -3,11 +3,12 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Briefcase, Activity, BookOpen, Clock } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Activity, BookOpen, Clock, ListChecks } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
   { href: '/projects', icon: Briefcase, label: 'Projets' },
+  { href: '/tasks', icon: ListChecks, label: 'Tâches' },
   { href: '/timesheet', icon: Clock, label: 'Feuille de temps' },
   { href: '/impact', icon: Activity, label: 'Analyse d\'Impact' },
   { href: '/resources', icon: BookOpen, label: 'Ressources' },
