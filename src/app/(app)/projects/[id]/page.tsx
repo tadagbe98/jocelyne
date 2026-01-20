@@ -265,11 +265,10 @@ function ProjectDetailsLoading() {
 }
 
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailsPage({ params: { id: projectId } }: { params: { id: string } }) {
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { id: projectId } = params;
 
     const projectRef = useMemo(() => {
         if (!userProfile?.companyId || !projectId) return null;
