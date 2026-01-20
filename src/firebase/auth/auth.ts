@@ -4,11 +4,15 @@ import {
   signInWithPopup,
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   updateProfile,
+  getAuth,
 } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { initializeFirebase } from '..';
-import { collection, doc, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, setDoc } from 'firebase/firestore';
 import { UserProfile } from '@/lib/types';
+import { firebaseConfig } from '../config';
 
 const { auth, firestore } = initializeFirebase();
 const googleProvider = new GoogleAuthProvider();
@@ -21,6 +25,16 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 };
+
+export const signInWithEmail = async (email, password) => {
+  try {
+    return await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    console.error('Error signing in with email', error);
+    throw error;
+  }
+};
+
 
 export const signOut = async () => {
   try {
@@ -79,28 +93,45 @@ export const signUpWithCompany = async (email, password, fullName, companyData: 
   return userCredential;
 }
 
-export const inviteUserToCompany = async (
+export const createUserForCompany = async (
   adminProfile: UserProfile, 
-  newUserData: { displayName: string; email: string; role: 'admin' | 'employee' | 'scrum-master' }
+  newUserData: { displayName: string; email: string; password: string, role: 'admin' | 'employee' | 'scrum-master' }
 ) => {
   if (!adminProfile.companyId || !adminProfile.roles?.some(r => ['admin', 'scrum-master'].includes(r))) {
-    throw new Error("Permission refusée : Seuls les administrateurs ou scrum masters peuvent inviter des utilisateurs.");
+    throw new Error("Permission refusée : Seuls les administrateurs ou scrum masters peuvent créer des utilisateurs.");
   }
 
-  // This function only creates a user profile document in Firestore with a 'pending' status.
-  // It does NOT create a user in Firebase Authentication.
-  // The invited user must complete the standard sign-up process using the same email address.
-  // A robust, production-ready solution would typically involve sending a signed invitation link
-  // via email, processed by a backend service (like Firebase Functions) to securely create the user.
+  // Use a temporary, secondary Firebase app to create the user.
+  // This allows the admin to remain logged in on the primary app.
+  const tempAppName = `auth-worker-${Date.now()}`;
+  const tempApp = initializeApp(firebaseConfig, tempAppName);
+  const tempAuth = getAuth(tempApp);
 
-  const usersRef = collection(firestore, 'users');
-  await addDoc(usersRef, {
+  try {
+    // 1. Create the user in Firebase Authentication via the temporary app's auth service.
+    const userCredential = await createUserWithEmailAndPassword(tempAuth, newUserData.email, newUserData.password);
+    const newUser = userCredential.user;
+    
+    // We also need to update their profile in Auth with the display name right after creation
+    await updateProfile(newUser, { displayName: newUserData.displayName });
+
+    // 2. We can now use the primary app's firestore instance to create the user profile.
+    await setDoc(doc(firestore, 'users', newUser.uid), {
+      uid: newUser.uid,
+      email: newUserData.email,
       displayName: newUserData.displayName,
-      email: newUserData.email.toLowerCase(),
-      roles: [newUserData.role],
+      photoURL: null, // New users won't have a photoURL initially.
       companyId: adminProfile.companyId,
-      status: 'pending',
-      photoURL: null,
-      uid: '', // This will be updated when the user signs up and their account is linked.
-  });
+      roles: [newUserData.role],
+      status: 'active', // The account is active immediately.
+    });
+
+    return newUser;
+  } catch (error) {
+    // Re-throw the error to be caught by the form handler to display a toast.
+    throw error;
+  } finally {
+    // 3. Delete the temporary app to clean up resources.
+    await deleteApp(tempApp);
+  }
 };

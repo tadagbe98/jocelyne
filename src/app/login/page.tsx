@@ -2,12 +2,16 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { signInWithGoogle } from '@/firebase/auth/auth';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { signInWithGoogle, signInWithEmail } from '@/firebase/auth/auth';
 import { useUser } from '@/firebase/auth/use-user';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Logo from '@/components/logo';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/app';
 
 function GoogleIcon() {
     return (
@@ -23,12 +27,41 @@ function GoogleIcon() {
 export default function LoginPage() {
     const { user, loading } = useUser();
     const router = useRouter();
+    const { toast } = useToast();
+    const [formLoading, setFormLoading] = useState(false);
 
     useEffect(() => {
         if (!loading && user) {
             router.push('/dashboard');
         }
     }, [user, loading, router]);
+
+    const handleEmailLogin = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setFormLoading(true);
+        const formData = new FormData(event.currentTarget);
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+
+        try {
+            await signInWithEmail(email, password);
+            // The useEffect will handle redirection.
+        } catch (error) {
+            let errorMessage = "Impossible de se connecter.";
+            if (error instanceof FirebaseError) {
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    errorMessage = "Email ou mot de passe incorrect.";
+                }
+            }
+            toast({
+                variant: 'destructive',
+                title: 'Erreur de connexion',
+                description: errorMessage,
+            });
+        } finally {
+            setFormLoading(false);
+        }
+    };
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
@@ -41,15 +74,19 @@ export default function LoginPage() {
                     <CardDescription>Connectez-vous pour gérer vos projets à impact.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={signInWithGoogle}
-                        disabled={loading}
-                    >
-                       <GoogleIcon />
-                        <span className="ml-2">Se connecter avec Google</span>
-                    </Button>
+                    <form onSubmit={handleEmailLogin} className="grid gap-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="email">Adresse e-mail</Label>
+                            <Input id="email" name="email" type="email" placeholder="admin@votreentreprise.com" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Mot de passe</Label>
+                            <Input id="password" name="password" type="password" required />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={loading || formLoading}>
+                           {formLoading ? 'Connexion en cours...' : 'Se connecter'}
+                        </Button>
+                    </form>
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />
@@ -60,6 +97,15 @@ export default function LoginPage() {
                             </span>
                         </div>
                     </div>
+                     <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={signInWithGoogle}
+                        disabled={loading || formLoading}
+                    >
+                       <GoogleIcon />
+                        <span className="ml-2">Se connecter avec Google</span>
+                    </Button>
                      <p className="px-8 text-sm text-center text-muted-foreground">
                         Vous n'avez pas d'entreprise ?{' '}
                         <Link

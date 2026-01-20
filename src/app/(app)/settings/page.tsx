@@ -12,7 +12,7 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/types";
-import { collection, doc, query, updateDoc, where, addDoc } from "firebase/firestore";
+import { collection, doc, query, updateDoc, where } from "firebase/firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import React from "react";
@@ -24,6 +24,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { createUserForCompany } from "@/firebase/auth/auth";
+import { FirebaseError } from "firebase/app";
+
 
 const companySchema = z.object({
   name: z.string().min(1, "Le nom de l'entreprise est requis."),
@@ -148,11 +151,17 @@ function CompanyProfileForm() {
     );
 }
 
-const inviteSchema = z.object({
+const createUserSchema = z.object({
   displayName: z.string().min(2, "Le nom est requis."),
   email: z.string().email("L'adresse e-mail n'est pas valide."),
+  password: z.string().min(6, "Le mot de passe doit faire au moins 6 caractères."),
+  confirmPassword: z.string(),
   role: z.enum(['employee', 'scrum-master', 'admin']),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["confirmPassword"],
 });
+
 
 function UserManagement() {
     const { userProfile } = useUser();
@@ -168,39 +177,40 @@ function UserManagement() {
     const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
     const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm({
-        resolver: zodResolver(inviteSchema),
-        defaultValues: { role: 'employee', displayName: '', email: '' }
+        resolver: zodResolver(createUserSchema),
+        defaultValues: { role: 'employee', displayName: '', email: '', password: '', confirmPassword: '' }
     });
 
     const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
 
-    const handleInviteUser = async (data) => {
-        if (!userProfile?.companyId) return;
+    const handleCreateUser = async (data) => {
+        if (!userProfile) return;
 
         try {
-            // Note: This only creates a user profile in Firestore.
-            // A secure implementation requires a backend function (e.g., Firebase Function)
-            // to create the actual Firebase Auth user.
-            const usersRef = collection(firestore, 'users');
-            await addDoc(usersRef, {
-                displayName: data.displayName,
-                email: data.email,
-                roles: [data.role],
-                companyId: userProfile.companyId,
-                status: 'pending', // User must sign up to activate the account
-                photoURL: null,
-                uid: '' // UID will be set upon user's first sign-in
-            });
+            await createUserForCompany(userProfile, data);
             
             toast({
-                title: "Invitation envoyée (simulation)",
-                description: `${data.displayName} a été ajouté. Il doit s'inscrire avec l'adresse ${data.email} pour activer son compte.`,
+                title: "Utilisateur créé",
+                description: `${data.displayName} a été ajouté à votre entreprise.`,
             });
             reset();
             setIsDialogOpen(false);
         } catch (error) {
-            console.error("Error inviting user:", error);
-            toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'inviter l'utilisateur." });
+            console.error("Error creating user:", error);
+            let errorMessage = "Impossible de créer l'utilisateur.";
+            if (error instanceof FirebaseError) {
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        errorMessage = "Cette adresse e-mail est déjà utilisée.";
+                        break;
+                    case 'auth/weak-password':
+                        errorMessage = "Le mot de passe doit faire au moins 6 caractères.";
+                        break;
+                    default:
+                        errorMessage = "Erreur: " + error.message;
+                }
+            }
+            toast({ variant: 'destructive', title: "Erreur", description: errorMessage });
         }
     };
     
@@ -210,18 +220,18 @@ function UserManagement() {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Gestion des utilisateurs</CardTitle>
-                        <CardDescription>Invitez, visualisez et gérez les membres de votre équipe.</CardDescription>
+                        <CardDescription>Ajoutez, visualisez et gérez les membres de votre équipe.</CardDescription>
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button>Inviter un utilisateur</Button>
+                            <Button>Ajouter un utilisateur</Button>
                         </DialogTrigger>
                         <DialogContent>
-                            <form onSubmit={handleSubmit(handleInviteUser)}>
+                            <form onSubmit={handleSubmit(handleCreateUser)}>
                                 <DialogHeader>
-                                    <DialogTitle>Inviter un nouveau membre</DialogTitle>
+                                    <DialogTitle>Ajouter un nouvel utilisateur</DialogTitle>
                                     <DialogDescription>
-                                        Cette personne sera ajoutée à votre entreprise. Elle devra s'inscrire avec cette adresse e-mail pour accéder à l'application.
+                                        Créez un compte pour un nouveau membre de l'équipe. Il pourra se connecter avec l'email et le mot de passe que vous définissez.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
@@ -234,6 +244,16 @@ function UserManagement() {
                                         <Label htmlFor="email">Adresse e-mail</Label>
                                         <Input id="email" type="email" {...register("email")} />
                                         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password">Mot de passe</Label>
+                                        <Input id="password" type="password" {...register("password")} />
+                                        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                                        <Input id="confirmPassword" type="password" {...register("confirmPassword")} />
+                                        {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="role">Rôle</Label>
@@ -258,7 +278,7 @@ function UserManagement() {
                                 <DialogFooter>
                                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
                                     <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting ? "Envoi en cours..." : "Envoyer l'invitation"}
+                                        {isSubmitting ? "Création en cours..." : "Créer l'utilisateur"}
                                     </Button>
                                 </DialogFooter>
                             </form>
