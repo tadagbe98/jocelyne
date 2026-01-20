@@ -269,17 +269,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     const { userProfile, loading: userLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { id: projectId } = params;
 
     const projectRef = useMemo(() => {
-        if (!userProfile?.companyId || !params.id) return null;
+        if (!userProfile?.companyId || !projectId) return null;
         return doc(
             firestore, 
             'companies', 
             userProfile.companyId, 
             'projects', 
-            params.id
+            projectId
         ) as DocumentReference<Project>;
-    }, [firestore, userProfile?.companyId, params.id]);
+    }, [firestore, userProfile?.companyId, projectId]);
 
     const { data: project, loading: projectLoading } = useDoc<Project>(projectRef);
     
