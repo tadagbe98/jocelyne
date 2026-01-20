@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { onSnapshot, Query, DocumentData } from 'firebase/firestore';
 
 export function useCollection<T extends DocumentData>(
@@ -8,6 +8,13 @@ export function useCollection<T extends DocumentData>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const queryPath = useMemo(() => {
+    if (!query) return null;
+    // A simplified way to create a stable key from a query
+    return `${query.path}_${JSON.stringify(query._query.filters)}_${JSON.stringify(query._query.orderBy)}_${query._query.limit}`;
+  }, [query]);
+
 
   useEffect(() => {
     if (!query) {
@@ -35,7 +42,7 @@ export function useCollection<T extends DocumentData>(
     );
 
     return () => unsubscribe();
-  }, [query]);
+  }, [queryPath]); // Depend on the stable query path
 
   return { data, loading, error };
 }

@@ -12,12 +12,12 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
 import { Deliverable, Project, Timesheet } from '@/lib/types';
 import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, deleteDoc, doc, writeBatch } from 'firebase/firestore';
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, MoreHorizontal, X, Timer, Play, Pause, Plus, Link2, Unlink2, ChevronsUpDown, Check, Search } from 'lucide-react';
+import { CalendarIcon, MoreHorizontal, X, Timer, Play, Pause, Plus, Link2, Unlink2, ChevronsUpDown, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, formatDuration, intervalToDuration } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -29,11 +29,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 const timesheetSchema = z.object({
     date: z.date({ required_error: "La date est requise." }),
@@ -84,7 +83,6 @@ const getDeliverableStatusColor = (status: Deliverable['status']) => {
 
 // Main Form Components
 function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isManager, onNewDeliverable }) {
-    const { toast } = useToast();
     const [durationStr, setDurationStr] = useState('00:00');
     const [timer, setTimer] = useState({ running: false, startTime: 0 });
 
@@ -359,7 +357,6 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
     const firestore = useFirestore();
     const { toast } = useToast();
     const isEditing = !!deliverableToEdit;
-    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<z.infer<typeof deliverableSchema>>({
       resolver: zodResolver(deliverableSchema),
@@ -477,27 +474,20 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                                 <FormItem><FormLabel>Phase du projet</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Phase"/></SelectTrigger></FormControl><SelectContent>{['Analyse des besoins', 'Conception', 'Développement', 'Tests', 'Déploiement', 'Maintenance'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage/></FormItem>
                             )}/>}
                             <div className="space-y-2">
-                                <FormLabel>Images</FormLabel>
-                                <div>
-                                    <FormControl>
-                                        <Input
-                                            ref={imageInputRef}
-                                            id="image-upload"
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={handleImageSelect}
-                                            className="hidden"
-                                        />
-                                    </FormControl>
-                                    <Button type="button" variant="outline" className="cursor-pointer" onClick={() => imageInputRef.current?.click()}>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Ajouter des images
-                                    </Button>
-                                    {form.formState.errors.imageUrls && <p className="text-sm text-destructive mt-2">{form.formState.errors.imageUrls.message?.toString()}</p>}
-                                </div>
+                                <FormLabel htmlFor="image-upload">Images</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        id="image-upload"
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handleImageSelect}
+                                    />
+                                </FormControl>
+                                {form.formState.errors.imageUrls && <p className="text-sm text-destructive mt-2">{form.formState.errors.imageUrls.message?.toString()}</p>}
+                                
                                 {imageUrls && imageUrls.length > 0 && (
-                                    <div className="mt-2 grid grid-cols-3 gap-2">
+                                    <div className="mt-4 grid grid-cols-3 gap-2">
                                         {(imageUrls || []).map((url, index) => (
                                             <div key={index} className="relative group">
                                                 <Image src={url} alt={`Preview ${index}`} width={100} height={100} className="rounded-md object-cover w-full aspect-square" />
@@ -564,7 +554,7 @@ export default function TimesheetPage() {
             orderBy('createdAt', 'desc'),
             limit(5)
         );
-    }, [firestore, userProfile?.companyId, userProfile?.uid]);
+    }, [userProfile?.uid, userProfile?.companyId]);
     const { data: timesheets, loading: timesheetsLoading, error } = useCollection<Timesheet>(timesheetQuery);
     
     const handleNewDeliverable = (projectId) => {
@@ -574,7 +564,7 @@ export default function TimesheetPage() {
 
     const handleFormSubmit = async (data) => {
         if (!userProfile) return;
-        const dataToSave = {
+        const dataToSave: Omit<Timesheet, 'id'> & { createdAt: any } = {
             ...data,
             billable: data.billable || false,
             date: format(data.date, 'yyyy-MM-dd'),
@@ -666,3 +656,4 @@ export default function TimesheetPage() {
     </>
   );
 }
+
