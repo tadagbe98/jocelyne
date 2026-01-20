@@ -13,11 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 function TasksLoading() {
     return (
@@ -58,6 +61,86 @@ function TasksLoading() {
             </Card>
         </>
     )
+}
+
+function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersLoading }: { companyUsers: UserProfile[], assignedUser?: UserProfile, onAssigneeChange: (id?: string) => void, usersLoading: boolean }) {
+    const [open, setOpen] = useState(false);
+
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) return '';
+        const initials = name.split(' ').map((n) => n[0]).join('');
+        return initials.toUpperCase();
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full sm:w-[200px] justify-between h-9 font-normal"
+                    disabled={usersLoading}
+                >
+                    {assignedUser ? (
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <Avatar className="w-6 h-6">
+                                <AvatarImage src={assignedUser.photoURL || ''} alt={assignedUser.displayName || ''} />
+                                <AvatarFallback>{getInitials(assignedUser.displayName)}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{assignedUser.displayName}</span>
+                        </div>
+                    ) : (
+                        "Assigner..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0">
+                <Command>
+                    <CommandInput placeholder="Rechercher un employé..." />
+                    <CommandList>
+                        <CommandEmpty>Aucun employé trouvé.</CommandEmpty>
+                        <CommandGroup>
+                            <CommandItem
+                                value="unassigned"
+                                onSelect={() => {
+                                    onAssigneeChange(undefined);
+                                    setOpen(false);
+                                }}
+                            >
+                                <Check
+                                    className={cn(
+                                        "mr-2 h-4 w-4",
+                                        !assignedUser ? "opacity-100" : "opacity-0"
+                                    )}
+                                />
+                                Non assigné
+                            </CommandItem>
+                            {(companyUsers || []).map((user) => (
+                                <CommandItem
+                                    key={user.uid}
+                                    value={user.displayName || user.email || ''}
+                                    onSelect={() => {
+                                        onAssigneeChange(user.uid);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            assignedUser?.uid === user.uid ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {user.displayName}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 
@@ -160,12 +243,6 @@ export default function TasksPage() {
         }
     };
 
-    const getInitials = (name: string | null | undefined) => {
-        if (!name) return '';
-        const initials = name.split(' ').map((n) => n[0]).join('');
-        return initials.toUpperCase();
-    };
-
     if (userLoading || !isAuthorized) {
         return <TasksLoading />;
     }
@@ -214,7 +291,7 @@ export default function TasksPage() {
                                         <TableRow>
                                             <TableHead className="w-[50px]">Fait</TableHead>
                                             <TableHead>Nom de la tâche</TableHead>
-                                            <TableHead className="w-[200px]">Assigné à</TableHead>
+                                            <TableHead className="w-auto sm:w-[200px]">Assigné à</TableHead>
                                             <TableHead className="text-right w-[50px]">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -233,31 +310,12 @@ export default function TasksPage() {
                                                         {task.name}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Select
-                                                            value={task.assigneeId || 'unassigned'}
-                                                            onValueChange={(newAssigneeId) => handleUpdateTask({ ...task, assigneeId: newAssigneeId === 'unassigned' ? undefined : newAssigneeId })}
-                                                            disabled={usersLoading}
-                                                        >
-                                                            <SelectTrigger className="h-9">
-                                                                {assignedUser ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Avatar className="w-6 h-6">
-                                                                            <AvatarImage src={assignedUser.photoURL || ''} alt={assignedUser.displayName || ''} />
-                                                                            <AvatarFallback>{getInitials(assignedUser.displayName)}</AvatarFallback>
-                                                                        </Avatar>
-                                                                        <span>{assignedUser.displayName}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <SelectValue placeholder="Assigner..." />
-                                                                )}
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="unassigned">Non assigné</SelectItem>
-                                                                {(companyUsers || []).map(user => (
-                                                                    <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                       <AssigneeCombobox
+                                                            companyUsers={companyUsers || []}
+                                                            assignedUser={assignedUser}
+                                                            usersLoading={usersLoading}
+                                                            onAssigneeChange={(newAssigneeId) => handleUpdateTask({ ...task, assigneeId: newAssigneeId })}
+                                                        />
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => handleRemoveTask(task.id)}>
