@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
-import { Deliverable, Project, Timesheet } from '@/lib/types';
+import { Deliverable, Project, Task, Timesheet } from '@/lib/types';
 import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,7 @@ const timesheetSchema = z.object({
     taskType: z.string().min(1, "Le type de tâche est requis."),
     description: z.string().min(1, "La description est requise."),
     deliverableId: z.string().optional(),
+    taskId: z.string().optional(),
     billable: z.boolean().default(false).optional(),
     billingReference: z.string().optional(),
 });
@@ -96,6 +97,7 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             taskType: '',
             description: '',
             deliverableId: undefined,
+            taskId: undefined,
             billable: false,
             billingReference: '',
         },
@@ -108,6 +110,38 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
     const selectedDeliverableId = watch('deliverableId');
     const selectedDeliverable = useMemo(() => deliverables.find(d => d.id === selectedDeliverableId), [deliverables, selectedDeliverableId]);
     const billable = watch('billable');
+    
+    const hierarchicalTasks = useMemo(() => {
+        const tasks = selectedProject?.tasks || [];
+        if (tasks.length === 0) return [];
+
+        const taskMap = new Map(tasks.map(t => [t.id, { ...t, children: [] as Task[] }]));
+        const roots: Task[] = [];
+
+        for (const task of tasks) {
+            if (task.parentId && taskMap.has(task.parentId)) {
+                const parent = taskMap.get(task.parentId);
+                if(parent) {
+                    parent.children.push(task);
+                }
+            } else {
+                roots.push(task);
+            }
+        }
+
+        const flatList: { task: Task, level: number }[] = [];
+        function flatten(tasks: Task[], level: number) {
+            for (const task of tasks.sort((a, b) => a.name.localeCompare(b.name))) {
+                flatList.push({ task, level });
+                const children = taskMap.get(task.id)?.children || [];
+                if (children.length > 0) {
+                    flatten(children, level + 1);
+                }
+            }
+        }
+        flatten(roots, 0);
+        return flatList;
+    }, [selectedProject?.tasks]);
 
 
     // Timer effect
@@ -147,6 +181,7 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             taskType: '',
             description: '',
             deliverableId: undefined,
+            taskId: undefined,
             billable: false,
             billingReference: '',
         });
@@ -208,6 +243,22 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
 
                         {/* Zone B: Work Done */}
                         <div className="space-y-4">
+                             <FormField control={control} name="taskId" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Tâche</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedProjectId}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder={!selectedProjectId ? "Sélectionnez d'abord un projet" : "Lier une tâche (optionnel)..."} /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {hierarchicalTasks.map(({ task, level }) => (
+                                                <SelectItem key={task.id} value={task.id} style={{ paddingLeft: `${level * 1.5 + 1}rem` }}>
+                                                   {task.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}/>
                             <FormField control={control} name="taskType" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Type de travail</FormLabel>
@@ -329,6 +380,12 @@ function RecentEntriesList({ timesheets, projects, deliverables, loading, onDele
     
     const getProjectName = useCallback((projectId) => projects.find(p => p.id === projectId)?.name || 'N/A', [projects]);
     const getDeliverableName = useCallback((deliverableId) => deliverables.find(d => d.id === deliverableId)?.name || 'N/A', [deliverables]);
+    const getTaskName = useCallback((projectId, taskId) => {
+        if (!taskId) return '-';
+        const project = projects.find(p => p.id === projectId);
+        const task = project?.tasks?.find(t => t.id === taskId);
+        return task?.name || 'N/A';
+    }, [projects]);
 
     return (
         <Card>
@@ -341,6 +398,7 @@ function RecentEntriesList({ timesheets, projects, deliverables, loading, onDele
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Projet</TableHead>
+                                <TableHead>Tâche</TableHead>
                                 <TableHead>Livrable</TableHead>
                                 <TableHead>Temps</TableHead>
                                 <TableHead>Statut</TableHead>
@@ -352,6 +410,7 @@ function RecentEntriesList({ timesheets, projects, deliverables, loading, onDele
                                 <TableRow key={entry.id}>
                                     <TableCell>{format(new Date(entry.date), 'dd/MM/yy')}</TableCell>
                                     <TableCell>{getProjectName(entry.projectId)}</TableCell>
+                                    <TableCell>{getTaskName(entry.projectId, entry.taskId)}</TableCell>
                                     <TableCell>{entry.deliverableId ? getDeliverableName(entry.deliverableId) : '-'}</TableCell>
                                     <TableCell>{formatHours(entry.duration)}</TableCell>
                                     <TableCell><Badge variant="outline">{entry.status}</Badge></TableCell>
@@ -499,17 +558,15 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                             )}/>}
                             <div className="space-y-2">
                                 <FormLabel>Images</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        ref={fileInputRef}
-                                        id="image-upload"
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={handleImageSelect}
-                                        className="hidden"
-                                    />
-                                </FormControl>
+                                 <Input
+                                    ref={fileInputRef}
+                                    id="image-upload"
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={handleImageSelect}
+                                    className="hidden"
+                                />
                                 <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
                                     <Plus className="mr-2 h-4 w-4" />
                                     Choisir des fichiers...
@@ -689,3 +746,6 @@ export default function TimesheetPage() {
 }
 
 
+
+
+    
