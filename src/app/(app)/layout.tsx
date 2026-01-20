@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col flex-1 min-h-screen">
         <header className="sticky top-0 z-10 w-full border-b bg-background">
             <div className="flex items-center h-16 px-4 mx-auto max-w-7xl md:px-6">
 

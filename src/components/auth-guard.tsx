@@ -16,11 +16,21 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col flex-1 min-h-screen">
         <header className="sticky top-0 z-10 w-full border-b bg-background">
-          <div className="flex items-center justify-between h-16 px-4 mx-auto max-w-7xl md:px-6">
-            <Skeleton className="w-24 h-8" />
-            <Skeleton className="w-10 h-10 rounded-full" />
+          <div className="flex items-center h-16 px-4 mx-auto max-w-7xl md:px-6">
+            <div className="items-center hidden gap-6 mr-6 md:flex">
+                <Skeleton className="w-24 h-6" />
+                <div className="flex items-center space-x-4 lg:space-x-6">
+                    <Skeleton className="w-20 h-4" />
+                    <Skeleton className="w-16 h-4" />
+                    <Skeleton className="w-24 h-4" />
+                </div>
+            </div>
+            <div className="flex items-center w-full gap-4 md:ml-auto md:w-auto md:gap-2 lg:gap-4">
+                <div className="flex-1 ml-auto sm:flex-initial" />
+                <Skeleton className="w-10 h-10 rounded-full" />
+            </div>
           </div>
         </header>
         <main className="flex-1 w-full p-4 mx-auto max-w-7xl sm:p-6 lg:p-8">
