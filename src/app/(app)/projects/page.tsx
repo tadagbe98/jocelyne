@@ -133,12 +133,9 @@ export default function ProjectsPage() {
                             {projects.map(project => (
                                 <TableRow key={project.id}>
                                     <TableCell className="font-medium">
-                                        <div
-                                            onClick={() => router.push(`/projects/${project.id}`)}
-                                            className="hover:underline cursor-pointer"
-                                        >
+                                        <Link href={`/projects/${project.id}`} className="hover:underline">
                                             {project.name}
-                                        </div>
+                                        </Link>
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">
                                         <Badge variant={getStatusVariant(project.status)}>
