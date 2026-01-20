@@ -45,7 +45,7 @@ function CompanyProfileForm() {
 
     const { data: company, loading: companyLoading } = useDoc(companyRef);
     
-    const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm({
+    const { register, handleSubmit, control, formState: { errors, isSubmitting }, reset } = useForm({
         resolver: zodResolver(companySchema),
         values: company, // Load initial values from Firestore
     });
@@ -97,12 +97,43 @@ function CompanyProfileForm() {
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="currency">Devise</Label>
-                            <Input id="currency" {...register("currency")} />
+                            <Controller
+                                name="currency"
+                                control={control}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger id="currency">
+                                            <SelectValue placeholder="Sélectionner une devise" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="XOF">Franc CFA (XOF)</SelectItem>
+                                            <SelectItem value="EUR">Euro (€)</SelectItem>
+                                            <SelectItem value="USD">Dollar Américain ($)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
                             {errors.currency && <p className="text-sm text-destructive">{errors.currency.message}</p>}
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="language">Langue</Label>
-                            <Input id="language" {...register("language")} />
+                             <Controller
+                                name="language"
+                                control={control}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger id="language">
+                                            <SelectValue placeholder="Sélectionner une langue" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Français">Français</SelectItem>
+                                            <SelectItem value="Anglais">Anglais</SelectItem>
+                                            <SelectItem value="Baoulé">Baoulé</SelectItem>
+                                            <SelectItem value="Dioula">Dioula</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
                             {errors.language && <p className="text-sm text-destructive">{errors.language.message}</p>}
                         </div>
                     </div>
@@ -253,7 +284,7 @@ function UserManagement() {
                                 <TableCell>
                                     <div className="flex items-center gap-3">
                                         <Avatar>
-                                            <AvatarImage src={user.photoURL} />
+                                            <AvatarImage src={user.photoURL as string} />
                                             <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                                         </Avatar>
                                         <div>

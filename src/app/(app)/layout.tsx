@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="items-center hidden gap-6 mr-6 md:flex">
                     <Link href="/dashboard" className="flex items-center gap-2">
                         <Logo className="w-6 h-6" />
-                        <span className="font-bold">ImpactBiz</span>
+                        <span className="font-bold">Projexia</span>
                     </Link>
                     <MainNav />
                 </div>
@@ -41,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <nav className="grid gap-6 text-lg font-medium">
                             <Link href="/dashboard" className="flex items-center gap-2 mb-4 text-lg font-semibold">
                                 <Logo className="w-6 h-6" />
-                                <span>ImpactBiz</span>
+                                <span>Projexia</span>
                             </Link>
                             <MainNav isMobile />
                         </nav>

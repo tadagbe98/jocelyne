@@ -37,7 +37,7 @@ export default function LoginPage() {
                     <div className="flex justify-center mb-4">
                         <Logo className="size-12" />
                     </div>
-                    <CardTitle className="text-2xl">Bienvenue sur ImpactBiz</CardTitle>
+                    <CardTitle className="text-2xl">Bienvenue sur Projexia</CardTitle>
                     <CardDescription>Connectez-vous pour gérer vos projets à impact.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
