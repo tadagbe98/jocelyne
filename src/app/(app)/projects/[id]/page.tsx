@@ -82,9 +82,12 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
     };
     
     const handleRemoveTask = async (taskId: string) => {
-        const updatedTasks = project.tasks.filter(t => t.id !== taskId);
+        const taskToRemove = project.tasks.find(t => t.id === taskId);
+        if (!taskToRemove) return;
         try {
-            await updateDoc(projectRef, { tasks: updatedTasks });
+            await updateDoc(projectRef, {
+                tasks: arrayRemove(taskToRemove)
+            });
         } catch (error) {
             console.error("Error removing task:", error);
             toast({
