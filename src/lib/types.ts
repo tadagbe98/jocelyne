@@ -90,5 +90,6 @@ export type Timesheet = {
     status: 'Validé' | 'En attente';
     companyId: string;
     billable?: boolean;
+    billingReference?: string;
     createdAt: Timestamp;
 };

@@ -12,7 +12,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
 import { Deliverable, Project, Timesheet } from '@/lib/types';
 import { addDoc, collection, query, serverTimestamp, where, orderBy, limit, deleteDoc, doc, writeBatch } from 'firebase/firestore';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, MoreHorizontal, X, Timer, Play, Pause, Plus, Link2, Unlink2, ChevronsUpDown, Check } from 'lucide-react';
@@ -42,6 +42,7 @@ const timesheetSchema = z.object({
     description: z.string().min(1, "La description est requise."),
     deliverableId: z.string().optional(),
     billable: z.boolean().default(false).optional(),
+    billingReference: z.string().optional(),
 });
 
 const deliverableSchema = z.object({
@@ -96,6 +97,7 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             description: '',
             deliverableId: undefined,
             billable: false,
+            billingReference: '',
         },
     });
 
@@ -105,6 +107,8 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
     const projectDeliverables = useMemo(() => deliverables.filter(d => d.projectId === selectedProjectId), [deliverables, selectedProjectId]);
     const selectedDeliverableId = watch('deliverableId');
     const selectedDeliverable = useMemo(() => deliverables.find(d => d.id === selectedDeliverableId), [deliverables, selectedDeliverableId]);
+    const billable = watch('billable');
+
 
     // Timer effect
     useEffect(() => {
@@ -144,6 +148,7 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             description: '',
             deliverableId: undefined,
             billable: false,
+            billingReference: '',
         });
         setDurationStr('00:00');
         setTimer({ running: false, startTime: 0 });
@@ -275,25 +280,42 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <FormField
-                                control={control}
-                                name="billable"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <FormLabel className="text-sm font-normal">
-                                            Facturable
-                                        </FormLabel>
-                                    </FormItem>
-                                )}
-                            />
-                            <Button type="submit">Enregistrer le temps</Button>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <FormField
+                                    control={control}
+                                    name="billable"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="text-sm font-normal">
+                                                Facturable
+                                            </FormLabel>
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button type="submit">Enregistrer le temps</Button>
+                            </div>
+                             {billable && (
+                                <FormField
+                                    control={control}
+                                    name="billingReference"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Référence de facturation</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="ID de facture, bon de commande..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
                         </div>
                     </CardContent>
                 </form>
@@ -357,6 +379,8 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
     const firestore = useFirestore();
     const { toast } = useToast();
     const isEditing = !!deliverableToEdit;
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     const form = useForm<z.infer<typeof deliverableSchema>>({
       resolver: zodResolver(deliverableSchema),
@@ -474,16 +498,22 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                                 <FormItem><FormLabel>Phase du projet</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Phase"/></SelectTrigger></FormControl><SelectContent>{['Analyse des besoins', 'Conception', 'Développement', 'Tests', 'Déploiement', 'Maintenance'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage/></FormItem>
                             )}/>}
                             <div className="space-y-2">
-                                <FormLabel htmlFor="image-upload">Images</FormLabel>
+                                <FormLabel>Images</FormLabel>
                                 <FormControl>
                                     <Input
+                                        ref={fileInputRef}
                                         id="image-upload"
                                         type="file"
                                         multiple
                                         accept="image/*"
                                         onChange={handleImageSelect}
+                                        className="hidden"
                                     />
                                 </FormControl>
+                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Choisir des fichiers...
+                                </Button>
                                 {form.formState.errors.imageUrls && <p className="text-sm text-destructive mt-2">{form.formState.errors.imageUrls.message?.toString()}</p>}
                                 
                                 {imageUrls && imageUrls.length > 0 && (
@@ -567,6 +597,7 @@ export default function TimesheetPage() {
         const dataToSave: Omit<Timesheet, 'id'> & { createdAt: any } = {
             ...data,
             billable: data.billable || false,
+            billingReference: data.billingReference || '',
             date: format(data.date, 'yyyy-MM-dd'),
             userId: userProfile.uid,
             companyId: userProfile.companyId,
@@ -656,4 +687,5 @@ export default function TimesheetPage() {
     </>
   );
 }
+
 
