@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -521,12 +520,19 @@ function RecentEntriesList({ projects, selectedUserId, isManager, userProfile })
         if (!userProfile?.companyId || !selectedUserId) return null;
         return query(
             collection(firestore, 'companies', userProfile.companyId, 'timesheets') as collection<Timesheet>,
-            where('userId', '==', selectedUserId),
-            orderBy('date', 'desc'),
-            limit(10)
+            where('userId', '==', selectedUserId)
         );
     }, [firestore, userProfile?.companyId, selectedUserId]);
-    const { data: timesheets, loading: timesheetsLoading } = useCollection<Timesheet>(timesheetQuery);
+    const { data, loading: timesheetsLoading } = useCollection<Timesheet>(timesheetQuery);
+    
+    const timesheets = useMemo(() => {
+        if (!data) return [];
+        // Sort by date descending, then take the first 10
+        return data
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 10);
+    }, [data]);
+
 
     const getProjectName = useCallback((projectId: string) => {
         return projects?.find(p => p.id === projectId)?.name ?? projectId;
@@ -636,6 +642,9 @@ export default function TimesheetPage() {
     );
 
     useEffect(() => {
+      // Set the default viewed user to the current user, once loaded.
+      // A manager can then change this via the form.
+      // An employee will be locked to their own view.
       if (user && !viewedUserId) {
         setViewedUserId(user.uid);
       }
@@ -684,3 +693,4 @@ export default function TimesheetPage() {
     </>
   );
 }
+
