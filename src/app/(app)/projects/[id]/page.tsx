@@ -28,6 +28,8 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
     const { userProfile } = useUser();
     const firestore = useFirestore();
     
+    const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
+
     const companyUsersQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
         return query(
@@ -98,6 +100,26 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
         }
     };
 
+    const handleAssignTask = async (taskId: string, newAssigneeId: string) => {
+        const updatedTasks = project.tasks.map(t =>
+            t.id === taskId ? { ...t, assigneeId: newAssigneeId === 'unassigned' ? undefined : newAssigneeId } : t
+        );
+        try {
+            await updateDoc(projectRef, { tasks: updatedTasks });
+            toast({
+                title: "Tâche assignée",
+                description: "L'assignation de la tâche a été mise à jour."
+            });
+        } catch (error) {
+            console.error("Error assigning task:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur',
+                description: "Impossible de modifier l'assignation. Veuillez réessayer.",
+            });
+        }
+    };
+
     const getInitials = (name: string | null | undefined) => {
         if (!name) return '';
         const initials = name.split(' ').map((n) => n[0]).join('');
@@ -111,27 +133,29 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
                 <CardDescription>Organisez et assignez les activités de votre projet.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col gap-2 mb-4 sm:flex-row">
-                    <Input 
-                        value={newTask} 
-                        onChange={(e) => setNewTask(e.target.value)} 
-                        placeholder="Ajouter une nouvelle tâche..." 
-                        className="flex-grow"
-                    />
-                    <Select onValueChange={setAssigneeId} value={assigneeId || ''}>
-                        <SelectTrigger className="w-full sm:w-[200px]">
-                            <SelectValue placeholder="Assigner à..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="unassigned">Non assigné</SelectItem>
-                            {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
-                            (companyUsers || []).map(user => (
-                                <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddTask} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Ajouter</Button>
-                </div>
+                {isManager && (
+                    <div className="flex flex-col gap-2 mb-4 sm:flex-row">
+                        <Input 
+                            value={newTask} 
+                            onChange={(e) => setNewTask(e.target.value)} 
+                            placeholder="Ajouter une nouvelle tâche..." 
+                            className="flex-grow"
+                        />
+                        <Select onValueChange={setAssigneeId} value={assigneeId || ''}>
+                            <SelectTrigger className="w-full sm:w-[200px]">
+                                <SelectValue placeholder="Assigner à..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="unassigned">Non assigné</SelectItem>
+                                {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
+                                (companyUsers || []).map(user => (
+                                    <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleAddTask} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> Ajouter</Button>
+                    </div>
+                )}
                 <div className="space-y-2">
                     <TooltipProvider>
                         {project.tasks.map(task => {
@@ -143,23 +167,43 @@ function ProjectPlan({ project, projectRef, toast }: { project: Project, project
                                         {task.name}
                                     </label>
                                     
-                                    {assignedUser && (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Avatar className="w-6 h-6 ml-auto mr-2">
-                                                    <AvatarImage src={assignedUser.photoURL || ''} alt={assignedUser.displayName || ''} />
-                                                    <AvatarFallback>{getInitials(assignedUser.displayName)}</AvatarFallback>
-                                                </Avatar>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Assigné à {assignedUser.displayName}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                    {isManager ? (
+                                        <Select
+                                            value={task.assigneeId || 'unassigned'}
+                                            onValueChange={(newAssigneeId) => handleAssignTask(task.id, newAssigneeId)}
+                                        >
+                                            <SelectTrigger className="w-[180px] ml-auto mr-2 h-8 text-xs">
+                                                <SelectValue placeholder="Assigner..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="unassigned">Non assigné</SelectItem>
+                                                {usersLoading ? <SelectItem value="loading" disabled>Chargement...</SelectItem> :
+                                                (companyUsers || []).map(user => (
+                                                    <SelectItem key={user.uid} value={user.uid}>{user.displayName}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        assignedUser && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Avatar className="w-6 h-6 ml-auto mr-2">
+                                                        <AvatarImage src={assignedUser.photoURL || ''} alt={assignedUser.displayName || ''} />
+                                                        <AvatarFallback>{getInitials(assignedUser.displayName)}</AvatarFallback>
+                                                    </Avatar>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Assigné à {assignedUser.displayName}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        )
                                     )}
 
-                                    <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemoveTask(task.id)}>
-                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
+                                    {isManager && (
+                                        <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemoveTask(task.id)}>
+                                            <Trash2 className="w-4 h-4 text-destructive" />
+                                        </Button>
+                                    )}
                                 </div>
                             )
                         })}
