@@ -38,14 +38,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {/* Desktop Navigation */}
                 <div className="items-center hidden gap-6 mr-6 md:flex">
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        {companyLoading ? (
-                          <Skeleton className="w-6 h-6 rounded-sm" />
-                        ) : company?.logoUrl ? (
-                          <Image src={company.logoUrl} alt={company.name || 'Company Logo'} width={24} height={24} className="object-contain rounded-sm" />
-                        ) : (
-                          <Logo className="w-6 h-6" />
-                        )}
-                        <span className="font-bold">{companyLoading ? <Skeleton className="w-20 h-5" /> : company?.name || 'Projexia'}</span>
+                        <Logo className="w-6 h-6" />
+                        <span className="font-bold">Projexia</span>
                     </Link>
                     <MainNav />
                 </div>
@@ -65,14 +59,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <SheetContent side="left">
                         <nav className="grid gap-6 text-lg font-medium">
                             <Link href="/dashboard" className="flex items-center gap-2 mb-4 text-lg font-semibold">
-                                {companyLoading ? (
-                                  <Skeleton className="w-6 h-6 rounded-sm" />
-                                ) : company?.logoUrl ? (
-                                  <Image src={company.logoUrl} alt={company.name || 'Company Logo'} width={24} height={24} className="object-contain rounded-sm" />
-                                ) : (
-                                  <Logo className="w-6 h-6" />
-                                )}
-                                <span>{company?.name || 'Projexia'}</span>
+                                <Logo className="w-6 h-6" />
+                                <span>Projexia</span>
                             </Link>
                             <MainNav isMobile />
                         </nav>
@@ -82,7 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {/* Right side of header */}
                 <div className="flex items-center w-full gap-4 md:ml-auto md:w-auto md:gap-2 lg:gap-4">
                     <div className="flex-1 ml-auto sm:flex-initial" />
-                    <UserNav />
+                    <UserNav company={company} companyLoading={companyLoading} />
                 </div>
             </div>
         </header>
