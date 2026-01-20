@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection } from '@/firebase/firestore/use-collection';
 
-function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
+function TimesheetForm({ onEntryAdded, projects, projectsLoading, viewedUserId, onUserChange }) {
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -29,7 +29,9 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
   const [date, setDate] = useState<Date | undefined>(new Date());
-  
+  const [hours, setHours] = useState('');
+  const [notes, setNotes] = useState('');
+
   const companyUsersQuery = useMemo(() => {
     if (!userProfile?.companyId) return null;
     return query(
@@ -40,47 +42,35 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
   }, [firestore, userProfile?.companyId]);
   const { data: companyUsers, loading: usersLoading } = useCollection<UserProfile>(companyUsersQuery);
 
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-
   const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
-
-  useEffect(() => {
-    // If user is not a manager, they can only submit for themselves.
-    // Otherwise, they need to select a user.
-    if (user) {
-        if (!isManager) {
-            setSelectedUserId(user.uid);
-        } else {
-            // Default to self if manager
-            setSelectedUserId(user.uid);
-        }
-    }
-  }, [user, isManager]);
 
   const tasksForSelectedProject = useMemo(() => {
     if (!selectedProject || !projects) return [];
     const project = projects.find(p => p.id === selectedProject);
     return project?.tasks || [];
   }, [selectedProject, projects]);
-
-  const handleProjectChange = (projectId: string) => {
-      setSelectedProject(projectId);
-      setSelectedTask('');
-  }
+  
+  useEffect(() => {
+    setSelectedTask('');
+  }, [selectedProject])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const userIdToSubmit = isManager ? (formData.get('userId') as string) : user?.uid;
+    const userIdToSubmit = isManager ? viewedUserId : user?.uid;
 
-    if (!userIdToSubmit || !userProfile?.companyId) {
-        toast({ variant: 'destructive', title: "Erreur", description: "Veuillez sélectionner un employé." });
+    if (!userIdToSubmit) {
+        toast({ variant: 'destructive', title: "Erreur", description: "Utilisateur non valide." });
         return;
     }
     
-    const hours = parseFloat(formData.get('hours') as string);
-    if (isNaN(hours) || hours <= 0) {
+    const hoursNumber = parseFloat(hours);
+    if (isNaN(hoursNumber) || hoursNumber <= 0) {
         toast({ variant: 'destructive', title: "Erreur", description: "Veuillez entrer un nombre d'heures valide." });
+        return;
+    }
+    
+    if (!selectedProject || !selectedTask) {
+        toast({ variant: 'destructive', title: "Erreur", description: "Veuillez sélectionner un projet et une tâche." });
         return;
     }
 
@@ -90,20 +80,22 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
         const timesheetsRef = collection(firestore, 'companies', userProfile.companyId, 'timesheets');
         await addDoc(timesheetsRef, {
             userId: userIdToSubmit,
-            projectId: formData.get('projectId') as string,
-            taskId: formData.get('taskId') as string,
+            projectId: selectedProject,
+            taskId: selectedTask,
             date: date ? format(date, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
-            hours: hours,
-            notes: formData.get('notes') as string,
+            hours: hoursNumber,
+            notes: notes,
             companyId: userProfile.companyId,
             createdAt: serverTimestamp(),
         });
         toast({ title: "Feuille de temps enregistrée !" });
         setSelectedProject('');
         setSelectedTask('');
-        (event.target as HTMLFormElement).querySelector('textarea[name="notes"]')?.value = '';
-        (event.target as HTMLFormElement).querySelector('input[name="hours"]')?.value = '';
-        onEntryAdded(userIdToSubmit); // Callback to refresh the list
+        setHours('');
+        setNotes('');
+        setDate(new Date());
+
+        onEntryAdded(userIdToSubmit);
     } catch (error) {
         console.error("Error creating timesheet entry:", error);
         toast({
@@ -127,7 +119,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
                 {isManager && (
                     <div className="space-y-2">
                         <Label htmlFor="employee">Employé</Label>
-                        <Select name="userId" required onValueChange={setSelectedUserId} value={selectedUserId}>
+                        <Select name="userId" required onValueChange={onUserChange} value={viewedUserId}>
                             <SelectTrigger id="employee">
                                 <SelectValue placeholder="Sélectionner un employé" />
                             </SelectTrigger>
@@ -140,7 +132,7 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
                 )}
                 <div className="space-y-2">
                     <Label htmlFor="project">Projet</Label>
-                     <Select name="projectId" required onValueChange={handleProjectChange} value={selectedProject}>
+                     <Select name="projectId" required onValueChange={setSelectedProject} value={selectedProject}>
                         <SelectTrigger id="project">
                             <SelectValue placeholder="Sélectionner un projet" />
                         </SelectTrigger>
@@ -187,12 +179,12 @@ function TimesheetForm({ onEntryAdded, projects, projectsLoading }) {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="hours">Heures</Label>
-                        <Input id="hours" name="hours" type="number" step="0.5" min="0" required placeholder="Ex: 2.5"/>
+                        <Input id="hours" name="hours" type="number" step="0.5" min="0" required placeholder="Ex: 2.5" value={hours} onChange={e => setHours(e.target.value)} />
                     </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="notes">Notes</Label>
-                    <Textarea id="notes" name="notes" placeholder="Décrivez le travail effectué... (optionnel)" />
+                    <Textarea id="notes" name="notes" placeholder="Décrivez le travail effectué... (optionnel)" value={notes} onChange={e => setNotes(e.target.value)} />
                 </div>
 
             </CardContent>
@@ -256,7 +248,7 @@ function RecentEntriesList({ projects, selectedUserId }) {
                         </TableBody>
                     </Table>
                 ) : (
-                    <p className="text-muted-foreground">Aucune entrée de temps récente.</p>
+                    <p className="text-muted-foreground">Aucune entrée de temps récente pour cet utilisateur.</p>
                 )}
             </CardContent>
         </Card>
@@ -266,7 +258,16 @@ function RecentEntriesList({ projects, selectedUserId }) {
 export default function TimesheetPage() {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
-    const [key, setKey] = useState(0); // Used to force refresh the recent entries list
+
+    // This state will control which user's data is displayed
+    const [viewedUserId, setViewedUserId] = useState<string | undefined>();
+
+    // Initialize with the current user's ID, or when the user loads
+    useEffect(() => {
+        if (user && !viewedUserId) {
+            setViewedUserId(user.uid);
+        }
+    }, [user, viewedUserId]);
 
     const projectsQuery = useMemo(() => {
         if (!userProfile?.companyId) return null;
@@ -275,8 +276,6 @@ export default function TimesheetPage() {
         );
     }, [firestore, userProfile?.companyId]);
     const { data: projects, loading: projectsLoading } = useCollection<Project>(projectsQuery);
-
-    const isManager = userProfile?.roles?.includes('admin') || userProfile?.roles?.includes('scrum-master');
 
   return (
     <>
@@ -288,13 +287,15 @@ export default function TimesheetPage() {
       <div className="grid gap-8 md:grid-cols-3">
         <div className="md:col-span-1">
             <TimesheetForm 
-                onEntryAdded={() => setKey(k => k + 1)} 
+                onEntryAdded={setViewedUserId} // When an entry is added, view that user's sheet
                 projects={projects ?? []}
                 projectsLoading={projectsLoading}
+                viewedUserId={viewedUserId}
+                onUserChange={setViewedUserId} // When manager changes selection, update view
             />
         </div>
         <div className="md:col-span-2">
-            <RecentEntriesList key={key} projects={projects ?? []} selectedUserId={user?.uid}/>
+            <RecentEntriesList projects={projects ?? []} selectedUserId={viewedUserId} />
         </div>
       </div>
     </>
