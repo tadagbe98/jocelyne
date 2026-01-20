@@ -42,7 +42,7 @@ export type Task = {
   id: string;
   name: string;
   completed: boolean;
-  dueDate: string;
+  dueDate?: string;
   assigneeId?: string;
   parentId?: string;
 };
@@ -62,53 +62,32 @@ export type Resource = {
   image: string;
 };
 
+export type Deliverable = {
+  id: string;
+  name: string;
+  projectId: string;
+  companyId: string;
+  status: 'À faire' | 'En cours' | 'En revue' | 'Livré' | 'Bloqué';
+  type?: string;
+  sprintNumber?: number;
+  projectPhase?: string;
+  acceptanceCriteria?: string;
+  validationStatus?: 'En attente' | 'Validé' | 'Rejeté';
+  imageUrls?: string[];
+  createdAt: Timestamp;
+};
+
 export type Timesheet = {
     id: string;
     userId: string;
     projectId: string;
-    taskId: string;
+    taskId?: string;
+    deliverableId?: string;
     date: string; // yyyy-MM-dd
-    startTime?: string; // HH:mm
-    endTime?: string; // HH:mm
     duration: number; // in hours
-    notes?: string;
+    description: string;
+    taskType: 'Développement' | 'Test' | 'Réunion' | 'Documentation' | 'Support / Maintenance';
+    status: 'Validé' | 'En attente';
     companyId: string;
     createdAt: Timestamp;
-    deliverableDescription?: string;
-    deliverableImageUrls?: string[];
-
-    workType?: 'Développement' | 'Test' | 'Réunion' | 'Documentation' | 'Support / Maintenance';
-    status?: 'En cours' | 'Terminé' | 'Bloqué';
-
-    // Agile
-    agileFramework?: 'Scrum' | 'Kanban' | 'XP';
-    sprintNumber?: number;
-    userStoryId?: string;
-    agileTaskType?: 'Feature' | 'Bug' | 'Refactoring' | 'Spike';
-    estimatedStoryPoints?: number;
-    isBlocked?: boolean;
-    blockerComment?: string;
-    agileToolLink?: string;
-
-    // Cascade
-    projectPhase?: 'Analyse des besoins' | 'Conception' | 'Développement' | 'Tests' | 'Déploiement' | 'Maintenance';
-    wbsCode?: string;
-    validationStatus?: 'En attente' | 'Validé' | 'Rejeté';
-
-    // V-Model
-    developmentPhase?: 'Spécification' | 'Conception' | 'Implémentation';
-    associatedTestPhase?: 'Test unitaire' | 'Test d’intégration' | 'Test système' | 'Test d’acceptation';
-    testResult?: 'Conforme' | 'Non conforme';
-    documentReference?: string;
-
-    // Hybrid
-    iterationGoal?: string;
-    kpiTracked?: string;
-
-    // Advanced
-    isBillable?: boolean;
-    hourlyRate?: number;
-    calculatedCost?: number;
-    approvalStatus?: string;
-    managerComments?: string;
 };

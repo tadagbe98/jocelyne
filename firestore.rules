@@ -36,6 +36,10 @@ service cloud.firestore {
       match /timesheets/{timesheetId} {
         allow read, write: if isCompanyMember(companyId);
       }
+
+      match /deliverables/{deliverableId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
     }
   }
 }

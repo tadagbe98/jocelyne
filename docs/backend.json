@@ -192,13 +192,16 @@
         "assigneeId": {
           "type": "string",
           "description": "The UID of the user assigned to this task."
+        },
+        "parentId": {
+          "type": "string",
+          "description": "The ID of the parent task, if this is a subtask."
         }
       },
       "required": [
         "id",
         "name",
-        "completed",
-        "dueDate"
+        "completed"
       ]
     },
     "Expense": {
@@ -227,9 +230,83 @@
         "date"
       ]
     },
+    "Deliverable": {
+      "title": "Deliverable",
+      "description": "Represents a project deliverable which time can be logged against.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the deliverable."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "The ID of the project this deliverable belongs to."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "The ID of the company."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "À faire",
+            "En cours",
+            "En revue",
+            "Livré",
+            "Bloqué"
+          ],
+          "description": "The current status of the deliverable."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of deliverable (e.g., Maquette, Rapport, Feature)."
+        },
+        "sprintNumber": {
+          "type": "number",
+          "description": "The sprint number for Agile projects."
+        },
+        "projectPhase": {
+          "type": "string",
+          "description": "The project phase for Waterfall projects."
+        },
+        "acceptanceCriteria": {
+          "type": "string",
+          "description": "The criteria for accepting the deliverable."
+        },
+        "validationStatus": {
+          "type": "string",
+          "enum": [
+            "En attente",
+            "Validé",
+            "Rejeté"
+          ],
+          "description": "The validation status of the deliverable."
+        },
+        "imageUrls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "URLs of images associated with the deliverable."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "name",
+        "projectId",
+        "companyId",
+        "status",
+        "createdAt"
+      ]
+    },
     "Timesheet": {
       "title": "Timesheet",
-      "description": "Represents a single time entry for a user on a project task.",
+      "description": "Represents a single time entry for a user on a project.",
       "type": "object",
       "properties": {
         "userId": {
@@ -242,38 +319,26 @@
         },
         "taskId": {
           "type": "string",
-          "description": "The ID of the task."
+          "description": "The ID of the specific task worked on."
+        },
+        "deliverableId": {
+          "type": "string",
+          "description": "The ID of the deliverable this time entry contributes to."
         },
         "date": {
           "type": "string",
           "format": "date",
           "description": "The date the work was performed."
         },
-        "startTime": {
-          "type": "string",
-          "format": "time"
-        },
-        "endTime": {
-          "type": "string",
-          "format": "time"
-        },
         "duration": {
           "type": "number",
           "description": "Duration in hours."
         },
-        "notes": {
+        "description": {
           "type": "string",
-          "description": "Optional notes about the work."
+          "description": "A short description of the work done."
         },
-        "companyId": {
-          "type": "string",
-          "description": "The ID of the company."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "workType": {
+        "taskType": {
           "type": "string",
           "enum": [
             "Développement",
@@ -285,125 +350,19 @@
         },
         "status": {
           "type": "string",
+          "description": "The status of the time entry itself (e.g. Billed, Pending)",
           "enum": [
-            "En cours",
-            "Terminé",
-            "Bloqué"
-          ]
-        },
-        "agileFramework": {
-          "type": "string",
-          "enum": [
-            "Scrum",
-            "Kanban",
-            "XP"
-          ]
-        },
-        "sprintNumber": {
-          "type": "number"
-        },
-        "userStoryId": {
-          "type": "string"
-        },
-        "agileTaskType": {
-          "type": "string",
-          "enum": [
-            "Feature",
-            "Bug",
-            "Refactoring",
-            "Spike"
-          ]
-        },
-        "estimatedStoryPoints": {
-          "type": "number"
-        },
-        "isBlocked": {
-          "type": "boolean"
-        },
-        "blockerComment": {
-          "type": "string"
-        },
-        "projectPhase": {
-          "type": "string",
-          "enum": [
-            "Analyse des besoins",
-            "Conception",
-            "Développement",
-            "Tests",
-            "Déploiement",
-            "Maintenance"
-          ]
-        },
-        "wbsCode": {
-          "type": "string"
-        },
-        "deliverableDescription": {
-          "type": "string",
-          "description": "A description of the work delivered."
-        },
-        "deliverableImageUrls": {
-          "type": "array",
-          "description": "Image files of the deliverable, stored as data URLs.",
-          "items": {
-            "type": "string",
-            "format": "uri"
-          }
-        },
-        "validationStatus": {
-          "type": "string",
-          "enum": [
-            "En attente",
             "Validé",
-            "Rejeté"
+            "En attente"
           ]
         },
-        "developmentPhase": {
+        "companyId": {
           "type": "string",
-          "enum": [
-            "Spécification",
-            "Conception",
-            "Implémentation"
-          ]
+          "description": "The ID of the company."
         },
-        "associatedTestPhase": {
+        "createdAt": {
           "type": "string",
-          "enum": [
-            "Test unitaire",
-            "Test d’intégration",
-            "Test système",
-            "Test d’acceptation"
-          ]
-        },
-        "testResult": {
-          "type": "string",
-          "enum": [
-            "Conforme",
-            "Non conforme"
-          ]
-        },
-        "documentReference": {
-          "type": "string"
-        },
-        "iterationGoal": {
-          "type": "string"
-        },
-        "kpiTracked": {
-          "type": "string"
-        },
-        "isBillable": {
-          "type": "boolean"
-        },
-        "hourlyRate": {
-          "type": "number"
-        },
-        "calculatedCost": {
-          "type": "number"
-        },
-        "approvalStatus": {
-          "type": "string"
-        },
-        "managerComments": {
-          "type": "string"
+          "format": "date-time"
         }
       },
       "required": [
@@ -411,6 +370,8 @@
         "projectId",
         "date",
         "duration",
+        "description",
+        "taskType",
         "companyId",
         "createdAt"
       ]
@@ -446,6 +407,12 @@
         "$ref": "#/entities/Timesheet"
       },
       "description": "Stores timesheet entries for a company."
+    },
+    "/companies/{companyId}/deliverables/{deliverableId}": {
+      "schema": {
+        "$ref": "#/entities/Deliverable"
+      },
+      "description": "Stores project deliverables for a company."
     }
   }
 }
