@@ -104,6 +104,10 @@ function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersL
                         <CommandGroup>
                             <CommandItem
                                 value="unassigned"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
                                 onSelect={() => {
                                     onAssigneeChange(undefined);
                                     setOpen(false);
@@ -121,6 +125,10 @@ function AssigneeCombobox({ companyUsers, assignedUser, onAssigneeChange, usersL
                                 <CommandItem
                                     key={user.uid}
                                     value={user.displayName || user.email || ''}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
                                     onSelect={() => {
                                         onAssigneeChange(user.uid);
                                         setOpen(false);
