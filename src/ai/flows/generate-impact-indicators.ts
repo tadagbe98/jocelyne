@@ -8,7 +8,7 @@
  * - GenerateImpactIndicatorsOutput - The return type for the generateImpactIndicators function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, googleAI} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateImpactIndicatorsInputSchema = z.object({
@@ -33,7 +33,7 @@ export async function generateImpactIndicators(
 
 const prompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
-  model: 'googleai/gemini-2.5-flash',
+  model: googleAI.model('gemini-2.5-flash'),
   input: {schema: GenerateImpactIndicatorsInputSchema},
   output: {schema: GenerateImpactIndicatorsOutputSchema},
   prompt: `You are an expert in socio-economic impact assessment.
