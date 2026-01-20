@@ -89,5 +89,6 @@ export type Timesheet = {
     taskType: 'Développement' | 'Test' | 'Réunion' | 'Documentation' | 'Support / Maintenance';
     status: 'Validé' | 'En attente';
     companyId: string;
+    billable?: boolean;
     createdAt: Timestamp;
 };

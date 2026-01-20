@@ -31,6 +31,7 @@ import Image from 'next/image';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 
 const timesheetSchema = z.object({
     date: z.date({ required_error: "La date est requise." }),
@@ -39,6 +40,7 @@ const timesheetSchema = z.object({
     taskType: z.string().min(1, "Le type de tâche est requis."),
     description: z.string().min(1, "La description est requise."),
     deliverableId: z.string().optional(),
+    billable: z.boolean().default(false).optional(),
 });
 
 const deliverableSchema = z.object({
@@ -93,6 +95,7 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             taskType: '',
             description: '',
             deliverableId: undefined,
+            billable: false,
         },
     });
 
@@ -140,6 +143,7 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             taskType: '',
             description: '',
             deliverableId: undefined,
+            billable: false,
         });
         setDurationStr('00:00');
         setTimer({ running: false, startTime: 0 });
@@ -271,7 +275,24 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
                           )}
                         </div>
 
-                        <div className="flex justify-end">
+                        <div className="flex items-center justify-between">
+                            <FormField
+                                control={control}
+                                name="billable"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <FormLabel className="text-sm font-normal">
+                                            Facturable
+                                        </FormLabel>
+                                    </FormItem>
+                                )}
+                            />
                             <Button type="submit">Enregistrer le temps</Button>
                         </div>
                     </CardContent>
@@ -344,6 +365,40 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
     const { control, watch, setValue, handleSubmit, reset } = form;
     const selectedProjectId = watch('projectId');
     const selectedProject = useMemo(() => projects?.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+    const imageUrls = watch('imageUrls', []);
+
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            const currentUrls = form.getValues('imageUrls') || [];
+            const newUrls: string[] = [];
+            let filesToProcess = files.length;
+
+            if (currentUrls.length + files.length > 5) {
+                toast({ variant: 'destructive', title: "Trop d'images", description: "Vous ne pouvez téléverser que 5 images maximum."});
+                return;
+            }
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if (event.target?.result) {
+                        newUrls.push(event.target.result as string);
+                    }
+                    filesToProcess--;
+                    if (filesToProcess === 0) {
+                        setValue('imageUrls', [...currentUrls, ...newUrls]);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    };
+
+    const removeImage = (index: number) => {
+        setValue('imageUrls', (imageUrls || []).filter((_, i) => i !== index));
+    };
+
     
     useEffect(() => {
         if (deliverableToEdit) {
@@ -374,6 +429,12 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
 
         batch.set(ref, {
             ...data,
+            sprintNumber: data.sprintNumber || null,
+            projectPhase: data.projectPhase || null,
+            acceptanceCriteria: data.acceptanceCriteria || null,
+            validationStatus: data.validationStatus || null,
+            type: data.type || null,
+            imageUrls: data.imageUrls || [],
             companyId,
             createdAt: isEditing ? deliverableToEdit.createdAt : serverTimestamp(),
         }, { merge: true });
@@ -412,6 +473,28 @@ function DeliverablePanel({ isOpen, onOpenChange, projects, deliverableToEdit, c
                              {selectedProject?.methodology === 'Cascade' && <FormField name="projectPhase" control={control} render={({ field }) => (
                                 <FormItem><FormLabel>Phase du projet</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Phase"/></SelectTrigger></FormControl><SelectContent>{['Analyse des besoins', 'Conception', 'Développement', 'Tests', 'Déploiement', 'Maintenance'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage/></FormItem>
                             )}/>}
+                             <div>
+                                <FormLabel>Images</FormLabel>
+                                <FormControl>
+                                    <Input type="file" multiple accept="image/*" onChange={handleImageSelect} className="mt-1" />
+                                </FormControl>
+                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                    {(imageUrls || []).map((url, index) => (
+                                        <div key={index} className="relative group">
+                                            <Image src={url} alt={`Preview ${index}`} width={100} height={100} className="rounded-md object-cover w-full aspect-square" />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => removeImage(index)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                         <SheetFooter>
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
@@ -454,7 +537,7 @@ export default function TimesheetPage() {
     const { data: deliverables, loading: deliverablesLoading } = useCollection<Deliverable>(deliverablesQuery);
 
     const timesheetQuery = useMemo(() => {
-        if (!userProfile?.uid) return null;
+        if (!userProfile?.uid || !userProfile?.companyId) return null;
         return query(
             collection(firestore, 'companies', userProfile.companyId, 'timesheets') as collection<Timesheet>,
             where('userId', '==', userProfile.uid),
@@ -471,17 +554,28 @@ export default function TimesheetPage() {
 
     const handleFormSubmit = async (data) => {
         if (!userProfile) return;
+        const dataToSave = {
+            ...data,
+            billable: data.billable || false,
+            date: format(data.date, 'yyyy-MM-dd'),
+            userId: userProfile.uid,
+            companyId: userProfile.companyId,
+            status: 'En attente',
+            createdAt: serverTimestamp(),
+        };
+
+        // Remove undefined fields to avoid Firestore errors
+        Object.keys(dataToSave).forEach(key => {
+            if (dataToSave[key] === undefined) {
+                delete dataToSave[key];
+            }
+        });
+
         try {
-            await addDoc(collection(firestore, 'companies', userProfile.companyId, 'timesheets'), {
-                ...data,
-                date: format(data.date, 'yyyy-MM-dd'),
-                userId: userProfile.uid,
-                companyId: userProfile.companyId,
-                status: 'En attente',
-                createdAt: serverTimestamp(),
-            });
+            await addDoc(collection(firestore, 'companies', userProfile.companyId, 'timesheets'), dataToSave);
             toast({ title: "Feuille de temps enregistrée !" });
         } catch (e) {
+            console.error("Firestore error:", e);
             toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'enregistrer l'entrée."})
         }
     };
@@ -540,7 +634,7 @@ export default function TimesheetPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                Cette action est irréversible et supprimera définitivement cette entrée de temps.
+                Cette action est irréversible et supprimera définitivefiniment cette entrée de temps.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

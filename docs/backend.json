@@ -360,6 +360,10 @@
           "type": "string",
           "description": "The ID of the company."
         },
+        "billable": {
+          "type": "boolean",
+          "description": "Indicates if the time entry is billable."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
