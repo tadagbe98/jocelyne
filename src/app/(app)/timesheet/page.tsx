@@ -41,7 +41,6 @@ const timesheetSchema = z.object({
     deliverableId: z.string().optional(),
     taskId: z.string().optional(),
     billable: z.boolean().default(false).optional(),
-    billingReference: z.string().optional(),
 });
 
 const deliverableSchema = z.object({
@@ -97,7 +96,6 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             deliverableId: undefined,
             taskId: undefined,
             billable: false,
-            billingReference: '',
         },
     });
 
@@ -107,7 +105,6 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
     const projectDeliverables = useMemo(() => deliverables.filter(d => d.projectId === selectedProjectId), [deliverables, selectedProjectId]);
     const selectedDeliverableId = watch('deliverableId');
     const selectedDeliverable = useMemo(() => deliverables.find(d => d.id === selectedDeliverableId), [deliverables, selectedDeliverableId]);
-    const billable = watch('billable');
     
     const hierarchicalTasks = useMemo(() => {
         const tasks = selectedProject?.tasks || [];
@@ -181,7 +178,6 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
             deliverableId: undefined,
             taskId: undefined,
             billable: false,
-            billingReference: '',
         });
         setDurationStr('00:00');
         setTimer({ running: false, startTime: 0 });
@@ -329,42 +325,25 @@ function TimesheetForm({ projects, deliverables, onFormSubmit, userProfile, isMa
                           )}
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <FormField
-                                    control={control}
-                                    name="billable"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                            <FormControl>
-                                                <Switch
-                                                    checked={field.value}
-                                                    onCheckedChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <FormLabel className="text-sm font-normal">
-                                                Facturable
-                                            </FormLabel>
-                                        </FormItem>
-                                    )}
-                                />
-                                <Button type="submit">Enregistrer le temps</Button>
-                            </div>
-                             {billable && (
-                                <FormField
-                                    control={control}
-                                    name="billingReference"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Référence de facturation</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="ID de facture, bon de commande..." {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                        <div className="flex items-center justify-between">
+                            <FormField
+                                control={control}
+                                name="billable"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <FormLabel className="text-sm font-normal">
+                                            Facturable
+                                        </FormLabel>
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit">Enregistrer le temps</Button>
                         </div>
                     </CardContent>
                 </form>
