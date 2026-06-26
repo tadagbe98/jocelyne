@@ -1,32 +1,33 @@
+
 'use server';
 
 /**
- * @fileOverview Generates socio-economic impact indicators for a project.
+ * @fileOverview Génère des indicateurs d'impact socio-économique pour un projet.
  *
- * - generateImpactIndicators - A function that generates impact indicators for a given project description.
- * - GenerateImpactIndicatorsInput - The input type for the generateImpactIndicators function.
- * - GenerateImpactIndicatorsOutput - The return type for the generateImpactIndicators function.
+ * - generateImpactIndicators - Une fonction qui génère des indicateurs d'impact pour une description de projet donnée.
+ * - GenerateImpactIndicatorsInput - Le type d'entrée pour la fonction generateImpactIndicators.
+ * - GenerateImpactIndicatorsOutput - Le type de retour pour la fonction generateImpactIndicators.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const GenerateImpactIndicatorsInputSchema = z.object({
   projectDescription: z
     .string()
-    .describe('A detailed description of the project for which to generate impact indicators.'),
+    .describe('Une description détaillée du projet pour lequel générer des indicateurs d\'impact.'),
 });
 export type GenerateImpactIndicatorsInput = z.infer<typeof GenerateImpactIndicatorsInputSchema>;
 
 const GenerateImpactIndicatorsOutputSchema = z.object({
   indicators: z
     .string()
-    .describe('A list of key socio-economic impact indicators relevant to the project.'),
+    .describe('Une liste d\'indicateurs clés d\'impact socio-économique pertinents pour le projet.'),
 });
 export type GenerateImpactIndicatorsOutput = z.infer<typeof GenerateImpactIndicatorsOutputSchema>;
 
 /**
- * Server action wrapper for the impact indicators generation flow.
+ * Wrapper d'action serveur pour le flux de génération d'indicateurs d'impact.
  */
 export async function generateImpactIndicators(
   input: GenerateImpactIndicatorsInput
@@ -35,28 +36,28 @@ export async function generateImpactIndicators(
 }
 
 /**
- * Prompt definition for generating impact indicators.
+ * Définition du prompt pour générer les indicateurs d'impact.
  */
 const impactPrompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
   model: 'googleai/gemini-1.5-flash',
-  input: {schema: GenerateImpactIndicatorsInputSchema},
-  output: {schema: GenerateImpactIndicatorsOutputSchema},
-  prompt: `You are an expert in socio-economic impact assessment.
+  input: { schema: GenerateImpactIndicatorsInputSchema },
+  output: { schema: GenerateImpactIndicatorsOutputSchema },
+  prompt: `Tu es un expert en évaluation d'impact socio-économique.
 
-Based on the following project description, identify key socio-economic impact indicators that can be used to measure and track the project's success.
+Basé sur la description de projet suivante, identifie les indicateurs clés d'impact socio-économique qui peuvent être utilisés pour mesurer et suivre le succès du projet.
 
-Project Description: {{{projectDescription}}}
+Description du Projet : {{{projectDescription}}}
 
-List the indicators in a clear, concise, and measurable format.
-Consider both quantitative and qualitative indicators.
-Also consider both leading and lagging indicators.
+Présente les indicateurs sous forme de liste claire, concise et mesurable.
+Considère à la fois les indicateurs quantitatifs et qualitatifs.
+Considère également les indicateurs avancés (leading) et retardés (lagging).
 
-Provide the response as a well-structured text list.`,
+Fournis la réponse sous forme de texte bien structuré.`,
 });
 
 /**
- * Flow definition that executes the prompt.
+ * Définition du flux qui exécute le prompt.
  */
 const generateImpactIndicatorsFlow = ai.defineFlow(
   {
@@ -69,13 +70,13 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
       const response = await impactPrompt(input);
       
       if (!response || !response.output) {
-        throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez votre clé API.");
+        throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez la validité de votre clé API ou les quotas.");
       }
       
       return response.output;
     } catch (error: any) {
       console.error("Genkit Flow Error details:", error);
-      // On renvoie l'erreur spécifique pour aider au diagnostic
+      // On propage l'erreur pour qu'elle soit visible dans l'UI
       throw new Error(error.message || "Erreur technique lors de l'appel à l'IA.");
     }
   }

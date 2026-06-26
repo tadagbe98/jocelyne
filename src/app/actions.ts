@@ -5,7 +5,7 @@ import { generateImpactIndicators } from '@/ai/flows/generate-impact-indicators'
 import { z } from 'zod';
 
 const ImpactSchema = z.object({
-  projectDescription: z.string().min(50, "La description doit contenir au moins 50 caractères."),
+  projectDescription: z.string().min(50, "La description doit contenir au moins 50 caractères pour une analyse pertinente."),
 });
 
 export type FormState = {
@@ -37,11 +37,11 @@ export async function getImpactIndicatorsAction(
     return { data: result, error: null, message: "Indicateurs générés avec succès." };
   } catch (error: any) {
     console.error("Action Error Details:", error);
-    // On retourne le message d'erreur exact pour aider le débogage (ex: API key invalid)
+    // On retourne le message d'erreur exact pour l'UI
     return { 
       data: null, 
-      error: error.message || "Une erreur technique est survenue lors de l'appel à l'IA.", 
-      message: "Erreur" 
+      error: error.message || "Une erreur technique est survenue.", 
+      message: "Erreur lors de la génération." 
     };
   }
 }
