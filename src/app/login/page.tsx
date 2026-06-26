@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -68,10 +69,20 @@ export default function LoginPage() {
             await signInWithGoogle();
         } catch (error) {
             console.error(error);
+            let errorMessage = "La connexion avec Google a échoué.";
+            
+            if (error instanceof FirebaseError) {
+                if (error.code === 'auth/unauthorized-domain') {
+                    errorMessage = "Ce domaine n'est pas autorisé dans la console Firebase (Authentication > Settings > Authorized domains).";
+                } else if (error.code === 'auth/popup-blocked') {
+                    errorMessage = "La fenêtre de connexion a été bloquée par votre navigateur.";
+                }
+            }
+
             toast({
                 variant: 'destructive',
                 title: 'Erreur Google',
-                description: "La connexion avec Google a échoué. Assurez-vous que les fenêtres surgissantes sont autorisées.",
+                description: errorMessage,
             });
         } finally {
             setFormLoading(false);
