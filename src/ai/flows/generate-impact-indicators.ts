@@ -26,12 +26,18 @@ const GenerateImpactIndicatorsOutputSchema = z.object({
 });
 export type GenerateImpactIndicatorsOutput = z.infer<typeof GenerateImpactIndicatorsOutputSchema>;
 
+/**
+ * Server action wrapper for the impact indicators generation flow.
+ */
 export async function generateImpactIndicators(
   input: GenerateImpactIndicatorsInput
 ): Promise<GenerateImpactIndicatorsOutput> {
   return generateImpactIndicatorsFlow(input);
 }
 
+/**
+ * Prompt definition for generating impact indicators.
+ */
 const prompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
   model: 'googleai/gemini-1.5-flash',
@@ -39,24 +45,31 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateImpactIndicatorsOutputSchema},
   prompt: `You are an expert in socio-economic impact assessment.
 
-  Based on the following project description, identify key socio-economic impact indicators that can be used to measure and track the project's success.
+Based on the following project description, identify key socio-economic impact indicators that can be used to measure and track the project's success.
 
-  Project Description: {{{projectDescription}}}
+Project Description: {{{projectDescription}}}
 
-  List the indicators in a clear, concise, and measurable format.
-  Consider both quantitative and qualitative indicators.
-  Also consider both leading and lagging indicators.
-`,
+List the indicators in a clear, concise, and measurable format.
+Consider both quantitative and qualitative indicators.
+Also consider both leading and lagging indicators.
+
+Provide the response as a well-structured text list.`,
 });
 
+/**
+ * Flow definition that executes the prompt.
+ */
 const generateImpactIndicatorsFlow = ai.defineFlow(
   {
     name: 'generateImpactIndicatorsFlow',
     inputSchema: GenerateImpactIndicatorsInputSchema,
     outputSchema: GenerateImpactIndicatorsOutputSchema,
   },
-  async input => {
+  async (input) => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("Le modèle n'a pas pu générer d'indicateurs. Veuillez vérifier la description du projet.");
+    }
+    return output;
   }
 );
