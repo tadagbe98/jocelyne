@@ -9,7 +9,7 @@
  * - GenerateImpactIndicatorsOutput - The return type for the generateImpactIndicators function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, googleAI} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateImpactIndicatorsInputSchema = z.object({
@@ -66,10 +66,17 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
     outputSchema: GenerateImpactIndicatorsOutputSchema,
   },
   async (input) => {
-    const {output} = await impactPrompt(input);
-    if (!output) {
-      throw new Error("Le modèle n'a pas pu générer d'indicateurs. Veuillez vérifier la description du projet.");
+    try {
+      const response = await impactPrompt(input);
+      
+      if (!response || !response.output) {
+        throw new Error("Le modèle n'a pas renvoyé de résultat valide. Veuillez réessayer.");
+      }
+      
+      return response.output;
+    } catch (error: any) {
+      console.error("Genkit Flow Error:", error);
+      throw new Error(error.message || "Une erreur technique est survenue lors de l'appel à l'IA.");
     }
-    return output;
   }
 );
