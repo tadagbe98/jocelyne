@@ -38,7 +38,7 @@ export async function generateImpactIndicators(
 /**
  * Prompt definition for generating impact indicators.
  */
-const prompt = ai.definePrompt({
+const impactPrompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
   model: 'googleai/gemini-1.5-flash',
   input: {schema: GenerateImpactIndicatorsInputSchema},
@@ -66,7 +66,7 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
     outputSchema: GenerateImpactIndicatorsOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
+    const {output} = await impactPrompt(input);
     if (!output) {
       throw new Error("Le modèle n'a pas pu générer d'indicateurs. Veuillez vérifier la description du projet.");
     }
