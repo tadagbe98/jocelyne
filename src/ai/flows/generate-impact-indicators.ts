@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -9,7 +8,7 @@
  * - GenerateImpactIndicatorsOutput - The return type for the generateImpactIndicators function.
  */
 
-import {ai, googleAI} from '@/ai/genkit';
+import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateImpactIndicatorsInputSchema = z.object({
@@ -70,13 +69,14 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
       const response = await impactPrompt(input);
       
       if (!response || !response.output) {
-        throw new Error("Le modèle n'a pas renvoyé de résultat valide. Veuillez réessayer.");
+        throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez votre clé API.");
       }
       
       return response.output;
     } catch (error: any) {
-      console.error("Genkit Flow Error:", error);
-      throw new Error(error.message || "Une erreur technique est survenue lors de l'appel à l'IA.");
+      console.error("Genkit Flow Error details:", error);
+      // On renvoie l'erreur spécifique pour aider au diagnostic
+      throw new Error(error.message || "Erreur technique lors de l'appel à l'IA.");
     }
   }
 );

@@ -1,4 +1,3 @@
-
 import {genkit} from 'genkit';
 import {googleAI as googleAIFactory} from '@genkit-ai/google-genai';
 

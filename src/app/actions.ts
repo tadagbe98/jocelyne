@@ -34,8 +34,9 @@ export async function getImpactIndicatorsAction(
       projectDescription: validatedFields.data.projectDescription,
     });
     return { data: result, error: null, message: "Indicateurs générés avec succès." };
-  } catch (error) {
-    console.error(error);
-    return { data: null, error: "Une erreur est survenue lors de la génération des indicateurs.", message: "Erreur du serveur." };
+  } catch (error: any) {
+    console.error("Action Error:", error);
+    // On passe le message d'erreur réel pour qu'il s'affiche dans le toast
+    return { data: null, error: error.message || "Une erreur est survenue.", message: "Erreur" };
   }
 }
