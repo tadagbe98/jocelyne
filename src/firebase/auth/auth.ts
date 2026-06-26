@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { initializeFirebase } from '..';
-import { collection, doc, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 import { UserProfile } from '@/lib/types';
 import { firebaseConfig } from '../config';
 
@@ -19,7 +19,41 @@ const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async () => {
   try {
-    await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    // Vérifier si le profil utilisateur existe déjà dans Firestore
+    const userProfileRef = doc(firestore, 'users', user.uid);
+    const userProfileSnap = await getDoc(userProfileRef);
+
+    if (!userProfileSnap.exists()) {
+      // Si l'utilisateur n'existe pas, on crée une entreprise et un profil par défaut
+      // pour éviter que l'application ne bloque par manque de companyId.
+      const batch = writeBatch(firestore);
+      
+      const companyRef = doc(collection(firestore, 'companies'));
+      batch.set(companyRef, {
+        name: `Entreprise de ${user.displayName || 'Nouvel Utilisateur'}`,
+        ownerId: user.uid,
+        creationYear: new Date().getFullYear(),
+        country: "Sénégal",
+        currency: "XOF",
+        language: "Français",
+        createdAt: new Date(),
+      });
+
+      batch.set(userProfileRef, {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        companyId: companyRef.id,
+        roles: ['admin'],
+        status: 'active',
+      });
+
+      await batch.commit();
+    }
   } catch (error) {
     console.error('Error signing in with Google', error);
     throw error;

@@ -45,7 +45,6 @@ export default function LoginPage() {
 
         try {
             await signInWithEmail(email, password);
-            // The useEffect will handle redirection.
         } catch (error) {
             let errorMessage = "Impossible de se connecter.";
             if (error instanceof FirebaseError) {
@@ -63,8 +62,24 @@ export default function LoginPage() {
         }
     };
 
+    const handleGoogleLogin = async () => {
+        try {
+            setFormLoading(true);
+            await signInWithGoogle();
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: 'destructive',
+                title: 'Erreur Google',
+                description: "La connexion avec Google a échoué. Assurez-vous que les fenêtres surgissantes sont autorisées.",
+            });
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
     return (
-        <div className="grid w-full min-h-screen place-items-center bg-background px-4">
+        <div className="flex items-center justify-center w-full min-h-screen px-4 bg-background">
             <Card className="w-full max-w-sm">
                 <CardHeader className="text-center">
                     <div className="flex justify-center mb-4">
@@ -100,7 +115,7 @@ export default function LoginPage() {
                      <Button
                         variant="outline"
                         className="w-full"
-                        onClick={signInWithGoogle}
+                        onClick={handleGoogleLogin}
                         disabled={loading || formLoading}
                     >
                        <GoogleIcon />
