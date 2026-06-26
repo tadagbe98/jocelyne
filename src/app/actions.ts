@@ -1,3 +1,4 @@
+
 'use server';
 
 import { generateImpactIndicators } from '@/ai/flows/generate-impact-indicators';
@@ -35,8 +36,12 @@ export async function getImpactIndicatorsAction(
     });
     return { data: result, error: null, message: "Indicateurs générés avec succès." };
   } catch (error: any) {
-    console.error("Action Error:", error);
-    // On passe le message d'erreur réel pour qu'il s'affiche dans le toast
-    return { data: null, error: error.message || "Une erreur est survenue.", message: "Erreur" };
+    console.error("Action Error Details:", error);
+    // On retourne le message d'erreur exact pour aider le débogage (ex: API key invalid)
+    return { 
+      data: null, 
+      error: error.message || "Une erreur technique est survenue lors de l'appel à l'IA.", 
+      message: "Erreur" 
+    };
   }
 }
