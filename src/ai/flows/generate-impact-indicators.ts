@@ -70,13 +70,12 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
       const response = await impactPrompt(input);
       
       if (!response || !response.output) {
-        throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez la validité de votre clé API ou les quotas.");
+        throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez la validité de votre clé API.");
       }
       
       return response.output;
     } catch (error: any) {
       console.error("Genkit Flow Error details:", error);
-      // On propage l'erreur pour qu'elle soit visible dans l'UI
       throw new Error(error.message || "Erreur technique lors de l'appel à l'IA.");
     }
   }
