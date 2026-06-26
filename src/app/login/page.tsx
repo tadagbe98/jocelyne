@@ -73,7 +73,8 @@ export default function LoginPage() {
             
             if (error instanceof FirebaseError) {
                 if (error.code === 'auth/unauthorized-domain') {
-                    errorMessage = "Ce domaine n'est pas autorisé dans la console Firebase (Authentication > Settings > Authorized domains).";
+                    const domain = window.location.hostname;
+                    errorMessage = `Ce domaine (${domain}) n'est pas autorisé. Allez dans la Console Firebase > Authentication > Settings > Authorized domains et ajoutez "${domain}".`;
                 } else if (error.code === 'auth/popup-blocked') {
                     errorMessage = "La fenêtre de connexion a été bloquée par votre navigateur.";
                 }
@@ -90,7 +91,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex items-center justify-center w-full min-h-screen px-4 bg-background">
+        <div className="grid w-full min-h-screen place-items-center bg-background px-4">
             <Card className="w-full max-w-sm">
                 <CardHeader className="text-center">
                     <div className="flex justify-center mb-4">
