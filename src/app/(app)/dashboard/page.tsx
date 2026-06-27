@@ -1,28 +1,44 @@
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { Briefcase, CheckCircle, ListTodo, MoreHorizontal, CircleDollarSign } from 'lucide-react';
+import { Briefcase, CheckCircle, ListTodo, MoreHorizontal, CircleDollarSign, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, orderBy, limit, doc, DocumentReference } from 'firebase/firestore';
+import { collection, query, orderBy, doc, DocumentReference } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import React, { useMemo } from 'react';
 import { Company, Project } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { motion } from 'framer-motion';
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const item = {
+  hidden: { y: 20, opacity: 0 },
+  show: { y: 0, opacity: 1 }
+};
 
 function DashboardLoading() {
   return (
-    <>
+    <div className="space-y-8 animate-in fade-in duration-500">
       <PageHeader
         title="Tableau de Bord"
         description="Bienvenue sur votre espace de gestion de projets à impact."
@@ -30,53 +46,14 @@ function DashboardLoading() {
       />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <Skeleton className="h-4 w-2/4" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-6 w-1/4 mt-1" />
-              <Skeleton className="h-3 w-3/4 mt-2" />
-            </CardContent>
-          </Card>
+          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
         ))}
       </div>
       <div className="grid gap-6 mt-8 md:grid-cols-5">
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>Répartition des projets par statut</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <Skeleton className="w-full h-[300px]" />
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Activité Récente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Projet</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...Array(3)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 inline-block" /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <Skeleton className="md:col-span-3 h-[400px] rounded-2xl" />
+        <Skeleton className="md:col-span-2 h-[400px] rounded-2xl" />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -131,120 +108,148 @@ export default function DashboardPage() {
     },
   };
 
-  const recentActivities = projects.slice(0, 3);
+  const recentActivities = projects.slice(0, 5);
 
   return (
-    <>
+    <motion.div 
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
       <PageHeader
         title="Tableau de Bord"
-        description="Bienvenue sur votre espace de gestion de projets à impact."
+        description="Pilotez vos initiatives sociales et économiques avec précision."
         breadcrumbs={[{ label: "Tableau de Bord" }]}
+        actions={
+            <Button onClick={() => router.push('/projects/new')} className="premium-shadow mirror-effect">
+                Lancer un Projet
+            </Button>
+        }
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Projets en cours</CardTitle>
-            <Briefcase className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projectsInProgress}</div>
-            <p className="text-xs text-muted-foreground">Projets actuellement actifs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Tâches à faire</CardTitle>
-            <ListTodo className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tasksToDo}</div>
-            <p className="text-xs text-muted-foreground">Tâches non terminées</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Budget Dépensé</CardTitle>
-            <CircleDollarSign className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{spentBudget.toLocaleString('fr-FR', { style: 'currency', currency: company.currency })}</div>
-            <p className="text-xs text-muted-foreground">sur {totalBudget.toLocaleString('fr-FR', { style: 'currency', currency: company.currency })} alloués</p>
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Projets terminés</CardTitle>
-            <CheckCircle className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projects.filter(p => p.status === 'Terminé').length}</div>
-            <p className="text-xs text-muted-foreground">Projets achevés avec succès</p>
-          </CardContent>
-        </Card>
+        <motion.div variants={item}>
+            <Card className="glass-card premium-shadow overflow-hidden border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Projets actifs</CardTitle>
+                    <div className="p-2 bg-primary/10 rounded-full">
+                        <Briefcase className="w-4 h-4 text-primary" />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold">{projectsInProgress}</div>
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                        <TrendingUp className="w-3 h-3 mr-1 text-green-500" /> +2 ce mois-ci
+                    </p>
+                </CardContent>
+            </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+            <Card className="glass-card premium-shadow overflow-hidden border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Tâches</CardTitle>
+                    <div className="p-2 bg-purple-500/10 rounded-full">
+                        <ListTodo className="w-4 h-4 text-purple-500" />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold">{tasksToDo}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Actions à mener rapidement</p>
+                </CardContent>
+            </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+            <Card className="glass-card premium-shadow overflow-hidden border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Consommation</CardTitle>
+                    <div className="p-2 bg-indigo-500/10 rounded-full">
+                        <CircleDollarSign className="w-4 h-4 text-indigo-500" />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold">{spentBudget.toLocaleString('fr-FR', { style: 'currency', currency: company.currency })}</div>
+                    <p className="text-xs text-muted-foreground mt-1">sur {totalBudget.toLocaleString('fr-FR', { style: 'currency', currency: company.currency })}</p>
+                </CardContent>
+            </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+            <Card className="glass-card premium-shadow overflow-hidden border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Réussites</CardTitle>
+                    <div className="p-2 bg-green-500/10 rounded-full">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold">{projects.filter(p => p.status === 'Terminé').length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Impacts réalisés avec succès</p>
+                </CardContent>
+            </Card>
+        </motion.div>
       </div>
 
-      <div className="grid gap-6 mt-8 md:grid-cols-5">
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>Répartition des projets par statut</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="w-full h-[300px]">
-              <ResponsiveContainer>
-                <BarChart data={statusData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="status" tickLine={false} axisLine={false} tickMargin={8} />
-                  <YAxis />
-                  <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
+      <div className="grid gap-6 mt-12 md:grid-cols-5">
+        <motion.div variants={item} className="md:col-span-3">
+          <Card className="glass-card border-none premium-shadow h-full">
             <CardHeader>
-                <CardTitle>Activité Récente</CardTitle>
+              <CardTitle className="text-xl font-bold">Répartition par statut</CardTitle>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Projet</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead className="text-right">Action</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {recentActivities.map(project => (
-                            <TableRow key={project.id}>
-                                <TableCell className="font-medium">{project.name}</TableCell>
-                                <TableCell>
-                                    <Badge variant={project.status === 'Terminé' ? 'secondary' : 'default'}>{project.status}</Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onSelect={() => router.push(`/projects/${project.id}`)}>
-                                                Voir
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+              <ChartContainer config={chartConfig} className="w-full h-[350px]">
+                <ResponsiveContainer>
+                  <BarChart data={statusData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="status" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{ fill: 'rgba(139, 92, 246, 0.05)' }} content={<ChartTooltipContent />} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={item} className="md:col-span-2">
+            <Card className="glass-card border-none premium-shadow h-full">
+                <CardHeader>
+                    <CardTitle className="text-xl font-bold text-gradient">Dernières Activités</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="border-none bg-muted/30">
+                                <TableHead className="pl-6 py-4 font-semibold">Projet</TableHead>
+                                <TableHead className="font-semibold">Statut</TableHead>
+                                <TableHead className="text-right pr-6 font-semibold"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {recentActivities.map(project => (
+                                <TableRow key={project.id} className="hover:bg-primary/5 transition-colors border-b border-primary/5">
+                                    <TableCell className="font-semibold pl-6 py-5">{project.name}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={project.status === 'Terminé' ? 'secondary' : 'default'} className="rounded-md font-medium">
+                                            {project.status}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-6">
+                                        <Button variant="ghost" size="sm" onClick={() => router.push(`/projects/${project.id}`)} className="hover:bg-primary hover:text-white">
+                                            Gérer
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </motion.div>
       </div>
-    </>
+    </motion.div>
   );
 }

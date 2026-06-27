@@ -13,6 +13,7 @@ import Logo from '@/components/logo';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
+import { motion } from 'framer-motion';
 
 function GoogleIcon() {
     return (
@@ -69,21 +70,10 @@ export default function LoginPage() {
             await signInWithGoogle();
         } catch (error) {
             console.error(error);
-            let errorMessage = "La connexion avec Google a échoué.";
-            
-            if (error instanceof FirebaseError) {
-                if (error.code === 'auth/unauthorized-domain') {
-                    const domain = window.location.hostname;
-                    errorMessage = `Ce domaine (${domain}) n'est pas autorisé. Allez dans la Console Firebase > Authentication > Settings > Authorized domains et ajoutez EXACTEMENT : "${domain}".`;
-                } else if (error.code === 'auth/popup-blocked') {
-                    errorMessage = "La fenêtre de connexion a été bloquée par votre navigateur.";
-                }
-            }
-
             toast({
                 variant: 'destructive',
                 title: 'Erreur Google',
-                description: errorMessage,
+                description: "La connexion avec Google a échoué.",
             });
         } finally {
             setFormLoading(false);
@@ -91,59 +81,77 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen w-full bg-background px-4">
-            <Card className="w-full max-w-sm">
-                <CardHeader className="text-center">
-                    <div className="flex justify-center mb-4">
-                        <Logo className="size-12" />
-                    </div>
-                    <CardTitle className="text-2xl">Bienvenue sur Projexia</CardTitle>
-                    <CardDescription>Connectez-vous pour gérer vos projets à impact.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                    <form onSubmit={handleEmailLogin} className="grid gap-4">
-                         <div className="space-y-2">
-                            <Label htmlFor="email">Adresse e-mail</Label>
-                            <Input id="email" name="email" type="email" placeholder="admin@votreentreprise.com" required />
+        <div className="flex items-center justify-center min-h-screen w-full bg-background px-4 relative overflow-hidden">
+            {/* Design blobs */}
+            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/20 rounded-full blur-[120px]" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-500/20 rounded-full blur-[120px]" />
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-full max-w-md z-10"
+            >
+                <Card className="glass-card border-none shadow-2xl overflow-hidden p-4">
+                    <CardHeader className="text-center pb-8">
+                        <div className="flex justify-center mb-6">
+                            <motion.div 
+                                whileHover={{ rotate: 10 }}
+                                className="p-4 bg-primary rounded-2xl shadow-xl shadow-primary/30"
+                            >
+                                <Logo className="size-12 text-white" />
+                            </motion.div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Mot de passe</Label>
-                            <Input id="password" name="password" type="password" required />
+                        <CardTitle className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-primary to-purple-800">
+                            PROJEXIA
+                        </CardTitle>
+                        <CardDescription className="text-lg mt-2">Connectez-vous pour piloter l'impact.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <form onSubmit={handleEmailLogin} className="grid gap-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="email">Adresse e-mail</Label>
+                                <Input id="email" name="email" type="email" placeholder="admin@votreentreprise.com" className="bg-background/50 border-primary/10 h-12" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Mot de passe</Label>
+                                <Input id="password" name="password" type="password" className="bg-background/50 border-primary/10 h-12" required />
+                            </div>
+                            <Button type="submit" className="w-full h-12 text-lg font-bold premium-shadow mirror-effect" disabled={loading || formLoading}>
+                               {formLoading ? 'Connexion...' : 'Accéder au tableau de bord'}
+                            </Button>
+                        </form>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-primary/10" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="px-3 bg-transparent text-muted-foreground font-semibold">
+                                    OU CONTINUER AVEC
+                                </span>
+                            </div>
                         </div>
-                        <Button type="submit" className="w-full" disabled={loading || formLoading}>
-                           {formLoading ? 'Connexion en cours...' : 'Se connecter'}
-                        </Button>
-                    </form>
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="px-2 bg-background text-muted-foreground">
-                                Ou
-                            </span>
-                        </div>
-                    </div>
-                     <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleGoogleLogin}
-                        disabled={loading || formLoading}
-                    >
-                       <GoogleIcon />
-                        <span className="ml-2">Se connecter avec Google</span>
-                    </Button>
-                     <p className="px-8 text-sm text-center text-muted-foreground">
-                        Vous n'avez pas d'entreprise ?{' '}
-                        <Link
-                            href="/signup"
-                            className="underline underline-offset-4 hover:text-primary"
+                         <Button
+                            variant="outline"
+                            className="w-full h-12 glass-card hover:bg-primary/5 border-primary/10"
+                            onClick={handleGoogleLogin}
+                            disabled={loading || formLoading}
                         >
-                            Inscrivez-vous
-                        </Link>
-                    </p>
-                </CardContent>
-            </Card>
+                           <GoogleIcon />
+                            <span className="ml-3 font-semibold">Google Workspace</span>
+                        </Button>
+                         <p className="text-sm text-center text-muted-foreground mt-4">
+                            Nouveau sur Projexia ?{' '}
+                            <Link
+                                href="/signup"
+                                className="text-primary font-bold hover:underline"
+                            >
+                                Créer une entreprise
+                            </Link>
+                        </p>
+                    </CardContent>
+                </Card>
+            </motion.div>
         </div>
     );
 }
