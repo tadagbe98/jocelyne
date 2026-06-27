@@ -1,4 +1,3 @@
-
 'use client';
 
 import Logo from "@/components/logo";
@@ -16,11 +15,12 @@ import React, { useMemo } from 'react';
 import { doc, DocumentReference } from 'firebase/firestore';
 import { Company } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { usePathname } from "next/navigation";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { userProfile } = useUser();
   const firestore = useFirestore();
+  const pathname = usePathname();
 
   const companyRef = useMemo(() => {
     if (!userProfile?.companyId) return null;
@@ -31,21 +31,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <div className="flex flex-col flex-1 min-h-screen relative overflow-hidden">
-        {/* Background blobs for "Waw" effect */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="flex flex-col flex-1 min-h-screen relative overflow-hidden bg-background/50">
+        {/* Animated Orbs */}
+        <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }} />
 
-        <header className="sticky top-0 z-50 w-full glass-card border-none shadow-sm h-20 flex items-center">
+        <header className="sticky top-0 z-50 w-full h-20 glass-card border-b border-white/10 flex items-center">
             <div className="flex items-center w-full px-4 mx-auto max-w-7xl md:px-6">
 
                 {/* Desktop Navigation */}
                 <div className="items-center hidden gap-10 mr-10 md:flex">
                     <Link href="/dashboard" className="flex items-center gap-3 group">
-                        <div className="p-2 bg-primary rounded-xl shadow-lg group-hover:rotate-6 transition-transform">
+                        <motion.div 
+                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            className="p-2 bg-primary rounded-xl shadow-lg shadow-primary/20"
+                        >
                             <Logo className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-2xl font-black tracking-tighter text-primary">Projexia</span>
+                        </motion.div>
+                        <span className="text-2xl font-black tracking-tighter text-gradient">Projexia</span>
                     </Link>
                     <MainNav />
                 </div>
@@ -56,7 +59,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="shrink-0 md:hidden"
+                        className="shrink-0 md:hidden hover:bg-primary/10"
                     >
                         <Menu className="h-6 w-6" />
                     </Button>
@@ -65,7 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <nav className="grid gap-8 text-lg font-medium pt-10">
                             <Link href="/dashboard" className="flex items-center gap-3 mb-6">
                                 <Logo className="w-8 h-8" />
-                                <span className="text-2xl font-black">Projexia</span>
+                                <span className="text-2xl font-black text-gradient">Projexia</span>
                             </Link>
                             <MainNav isMobile />
                         </nav>
@@ -83,11 +86,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 w-full p-4 mx-auto max-w-7xl sm:p-6 lg:p-8 z-10">
           <AnimatePresence mode="wait">
             <motion.div
-              key={Math.random()} // Simplified page transition trigger
-              initial={{ opacity: 0, y: 10 }}
+              key={pathname}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 260,
+                damping: 20 
+              }}
             >
               {children}
             </motion.div>

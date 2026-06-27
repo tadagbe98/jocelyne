@@ -1,11 +1,10 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 270 20% 99%;
+    --background: 270 30% 98%;
     --foreground: 270 40% 5%;
 
     --card: 0 0% 100%;
@@ -14,54 +13,48 @@
     --popover: 0 0% 100%;
     --popover-foreground: 270 40% 5%;
  
-    --primary: 270 75% 60%;
+    --primary: 270 85% 60%;
     --primary-foreground: 0 0% 100%;
  
-    --secondary: 270 30% 94%;
-    --secondary-foreground: 270 60% 30%;
+    --secondary: 270 30% 92%;
+    --secondary-foreground: 270 70% 25%;
  
     --muted: 270 20% 94%;
-    --muted-foreground: 270 15% 45%;
+    --muted-foreground: 270 15% 40%;
  
-    --accent: 270 50% 92%;
-    --accent-foreground: 270 60% 30%;
+    --accent: 270 60% 94%;
+    --accent-foreground: 270 70% 25%;
  
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 270 20% 90%;
-    --input: 270 20% 90%;
-    --ring: 270 75% 60%;
+    --border: 270 25% 90%;
+    --input: 270 25% 90%;
+    --ring: 270 85% 60%;
  
-    --radius: 1rem;
-
-    --chart-1: 270 75% 60%;
-    --chart-2: 290 60% 55%;
-    --chart-3: 250 60% 55%;
-    --chart-4: 230 60% 50%;
-    --chart-5: 210 60% 45%;
+    --radius: 1.25rem;
   }
  
   .dark {
-    --background: 270 40% 3%;
+    --background: 270 50% 3%;
     --foreground: 270 10% 98%;
-    --card: 270 30% 6%;
+    --card: 270 35% 7%;
     --card-foreground: 270 10% 98%;
-    --popover: 270 30% 6%;
+    --popover: 270 35% 7%;
     --popover-foreground: 270 10% 98%;
-    --primary: 270 75% 65%;
+    --primary: 270 85% 65%;
     --primary-foreground: 270 40% 3%;
     --secondary: 270 30% 12%;
     --secondary-foreground: 270 10% 98%;
-    --muted: 270 30% 12%;
+    --muted: 270 30% 15%;
     --muted-foreground: 270 10% 65%;
-    --accent: 270 30% 15%;
+    --accent: 270 35% 15%;
     --accent-foreground: 270 10% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 270 10% 98%;
-    --border: 270 30% 15%;
-    --input: 270 30% 15%;
-    --ring: 270 75% 65%;
+    --border: 270 30% 18%;
+    --input: 270 30% 18%;
+    --ring: 270 85% 65%;
   }
 }
  
@@ -70,51 +63,48 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    background-image: radial-gradient(at 0% 0%, hsla(270, 75%, 60%, 0.05) 0, transparent 50%),
-                      radial-gradient(at 100% 100%, hsla(270, 75%, 60%, 0.05) 0, transparent 50%);
+    @apply bg-background text-foreground font-body antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(270, 85%, 60%, 0.08) 0, transparent 40%),
+      radial-gradient(at 100% 0%, hsla(280, 80%, 50%, 0.05) 0, transparent 40%),
+      radial-gradient(at 50% 100%, hsla(260, 90%, 60%, 0.05) 0, transparent 40%);
     background-attachment: fixed;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_0_rgba(139,92,246,0.1)];
   }
   
   .dark .glass-card {
-    @apply bg-black/40 backdrop-blur-md border border-white/10 shadow-2xl;
+    @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)];
   }
 
   .premium-shadow {
-    box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.2);
+    @apply shadow-[0_20px_50px_-12px_rgba(139,92,246,0.25)];
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-indigo-600;
   }
 
   .mirror-effect {
-    position: relative;
-    overflow: hidden;
+    @apply relative overflow-hidden;
   }
 
   .mirror-effect::after {
     content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
+    @apply absolute -top-1/2 -left-1/2 w-[200%] h-[200%] rotate-[45deg] transition-all duration-700 pointer-events-none;
     background: linear-gradient(
       45deg,
       transparent 45%,
-      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.2) 50%,
       transparent 55%
     );
-    transform: rotate(45deg);
-    transition: all 0.5s;
-    pointer-events: none;
   }
 
   .mirror-effect:hover::after {
-    left: 100%;
-    top: 100%;
+    @apply left-full top-full;
   }
 }
