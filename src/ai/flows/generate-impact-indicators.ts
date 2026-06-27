@@ -9,7 +9,7 @@
  * - GenerateImpactIndicatorsOutput - Le type de retour pour la fonction generateImpactIndicators.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, googleAI } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateImpactIndicatorsInputSchema = z.object({
@@ -40,7 +40,7 @@ export async function generateImpactIndicators(
  */
 const impactPrompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: googleAI.model('gemini-1.5-flash'),
   input: { schema: GenerateImpactIndicatorsInputSchema },
   output: { schema: GenerateImpactIndicatorsOutputSchema },
   prompt: `Tu es un expert en évaluation d'impact socio-économique.
@@ -67,15 +67,15 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const response = await impactPrompt(input);
+      const { output } = await impactPrompt(input);
       
-      if (!response || !response.output) {
+      if (!output) {
         throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez la validité de votre clé API.");
       }
       
-      return response.output;
+      return output;
     } catch (error: any) {
-      console.error("Genkit Flow Error details:", error);
+      console.error("Genkit Flow Error:", error);
       throw new Error(error.message || "Erreur technique lors de l'appel à l'IA.");
     }
   }
