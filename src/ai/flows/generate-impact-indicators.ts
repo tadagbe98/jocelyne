@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -36,7 +37,7 @@ export async function generateImpactIndicators(
 
 /**
  * Définition du prompt pour générer les indicateurs d'impact.
- * Utilisation du nom de modèle recommandé pour Genkit 1.x.
+ * Utilisation de l'identifiant de modèle standard pour Genkit 1.x.
  */
 const impactPrompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
@@ -53,7 +54,7 @@ Présente les indicateurs sous forme de liste claire, concise et mesurable.
 Considère à la fois les indicateurs quantitatifs et qualitatifs.
 Considère également les indicateurs avancés (leading) et retardés (lagging).
 
-Fournis la réponse sous forme de texte bien structuré.`,
+Fournis la réponse sous forme de texte bien structuré en français.`,
 });
 
 /**
@@ -70,13 +71,13 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
       const { output } = await impactPrompt(input);
       
       if (!output) {
-        throw new Error("Le modèle n'a pas renvoyé de résultat. Veuillez vérifier la validité de votre clé API.");
+        throw new Error("Le modèle n'a pas renvoyé de résultat. Vérifiez la validité de votre clé API.");
       }
       
       return output;
     } catch (error: any) {
-      // Propagation de l'erreur détaillée pour le diagnostic
       console.error("Erreur Genkit Flow:", error);
+      // On renvoie un message d'erreur plus utile pour le débogage
       throw new Error(error.message || "Erreur technique lors de l'appel à l'IA.");
     }
   }
