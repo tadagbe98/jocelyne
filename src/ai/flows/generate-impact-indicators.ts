@@ -36,6 +36,7 @@ export async function generateImpactIndicators(
 
 /**
  * Définition du prompt pour générer les indicateurs d'impact.
+ * Utilisation du nom de modèle recommandé pour Genkit 1.x.
  */
 const impactPrompt = ai.definePrompt({
   name: 'generateImpactIndicatorsPrompt',
@@ -74,7 +75,8 @@ const generateImpactIndicatorsFlow = ai.defineFlow(
       
       return output;
     } catch (error: any) {
-      // On propage l'erreur avec un message clair
+      // Propagation de l'erreur détaillée pour le diagnostic
+      console.error("Erreur Genkit Flow:", error);
       throw new Error(error.message || "Erreur technique lors de l'appel à l'IA.");
     }
   }
